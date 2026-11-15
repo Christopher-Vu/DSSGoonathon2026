@@ -54,8 +54,11 @@ MONO = {"sold_2y": 1, "sold_1y": 1, "sold_3y": 1, "yrs_since_sale": -1, "bf_elli
 
 def fit_predict_twohead(ctx, h_bo=1, h_bf=2, t_bo_min=2014, t_bf_min=2011, hl_bo=0, hl_bf=2.0,
                         feats=BASE + SALE, mono=True, rounds_bo=300, rounds_bf=400, units=(3, 60), w_bf=1.0,
-                        flat_tenants=False, return_parts=False):
+                        flat_tenants=False, emb_k=0, return_parts=False):
     rows = add_feats(ctx.rows, ctx.events["sales"])
+    if emb_k:
+        rows, pcs = add_emb(ctx, rows, emb_k)
+        feats = list(feats) + pcs
     ctx_rows, ctx.rows = ctx.rows, rows
     try:
         sc = ctx.score
@@ -83,6 +86,21 @@ def fit_predict_twohead(ctx, h_bo=1, h_bf=2, t_bo_min=2014, t_bf_min=2011, hl_bo
 
     v = v_bo + w_bf * v_bf
     return (v, v_bo, v_bf) if return_parts else v
+
+
+def add_emb(ctx, rows, k=16, lam=None):
+    """PCA (fit on embeddings with year <= T, all from the cutoff-T model) of parcel embeddings, joined on
+    (blklot, year == t). Rows without an embedding get NaN (LightGBM handles missing)."""
+    from sklearn.decomposition import PCA
+    e = ctx.emb("parcel")
+    if "lam" in e and e.lam.nunique() > 1:
+        e = e[e.lam == (lam if lam is not None else sorted(e.lam.unique())[0])]
+    cols = [c for c in e.columns if c.startswith("e") and c[1:].isdigit()]
+    e = e.drop_duplicates(["blklot", "year"])
+    z = PCA(k, random_state=0).fit_transform(e[cols].to_numpy(np.float32))
+    pcs = [f"pc{i}" for i in range(k)]
+    z = pd.DataFrame(z, columns=pcs).assign(blklot=e.blklot.values, t=e.year.astype(int).values)
+    return rows.merge(z, on=["blklot", "t"], how="left"), pcs
 
 
 def heuristic_raw(df):
