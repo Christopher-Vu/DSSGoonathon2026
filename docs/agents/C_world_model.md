@@ -9,6 +9,7 @@ A **≤10M-parameter** transformer over H3 res-9 cells that learns what a cell *
 - a UMAP→RGB map of SF in which neighborhoods appear without labels.
 
 ## Rules
+- **No heavy local compute.** The laptop froze once already. Anything beyond tiny fixture tests (seconds, <1 GB RAM) goes to Savio as an sbatch handed to stream A.
 - **Git:**
   - work in your own worktree on branch `c-world-model`;
   - **commit frequently, with short curt messages** (e.g. `tokenizer`, `next-year head`), and **no Claude/Co-Authored-By attribution, ever**;

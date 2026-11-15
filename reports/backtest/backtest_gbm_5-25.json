@@ -1,0 +1,46 @@
+{
+ "tag": "gbm",
+ "universe_n": 7744,
+ "units_band": [
+  5,
+  25
+ ],
+ "city_n": 13,
+ "city_picks_2019_2023": 20,
+ "budget_usd": 46057539.29541251,
+ "price_model": {
+  "n_sales": 2626,
+  "r2_in_sample": 0.597069108312684
+ },
+ "universe_total_value": 1137.8905890444337,
+ "ours": {
+  "n": 17,
+  "cost": 45997828.26923017,
+  "households": 0.38461538461538464,
+  "units": 103
+ },
+ "recently_sold_heuristic": {
+  "n": 23,
+  "cost": 45972209.82832319,
+  "households": 12.577763542308524,
+  "units": 131
+ },
+ "city_raw": {
+  "n": 13,
+  "cost": 46057539.29541251,
+  "households": 2.2758620689655173,
+  "units": 118
+ },
+ "city_lookalike": {
+  "n": 13,
+  "households": 1.5073452772168727,
+  "households_per_$budget": 1.3419770256665768
+ },
+ "random": {
+  "mean": 1.7230385870560516,
+  "p5": 0.0,
+  "p95": 6.148634453781511
+ },
+ "ratio_ours_vs_lookalike": 0.28660355375632557,
+ "ratio_ours_vs_random": 0.2232192520264625
+}
