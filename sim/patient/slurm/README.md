@@ -10,10 +10,11 @@ Run this from the main checkout:
 S=christophervu@dtn.brc.berkeley.edu:/global/scratch/users/christophervu/dssg
 git -C ../dssg-b archive b-patient-sim | ssh christophervu@dtn.brc.berkeley.edu \
   "mkdir -p /global/scratch/users/christophervu/dssg/repo-b && tar -x -C /global/scratch/users/christophervu/dssg/repo-b"
-rsync -avR data/./processed/sim data/./processed/fixtures data/./raw/sim/osm/region.osm.pbf $S/data/
+rsync -avR data/./processed/sim data/./processed/fixtures data/./raw/sim/osm/region.osm.pbf \
+  data/./raw/sim/tiger/tl_2020_06_puma20.zip $S/data/
 ```
 
-You don't need `raw/sim/{pums,tiger,gtfs}`, because the processed parquet files and the `*_clean.zip` files are already built. The sbatch script rebuilds an ETL step only when that step's output is missing.
+The PUMA shapes (`tiger/tl_2020_06_puma20.zip`, 6 MB) are read at run time to assign each origin to an SF PUMA. You don't need `raw/sim/{pums,gtfs}` or the block shapefile, because the processed parquet files and the `*_clean.zip` files are already built. The sbatch script rebuilds an ETL step only when that step's output is missing.
 
 ## 2. Submit
 
