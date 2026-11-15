@@ -1,0 +1,14 @@
+{
+  "lam": 0.1,
+  "cutoff": 2018,
+  "year": 2018,
+  "mean_lift_emb": 0.10290667382123593,
+  "mean_lift_emb_se": 0.046856743225610724,
+  "mean_lift_emb_lo": 0.0012778551314250226,
+  "mean_lift_emb_hi": 0.18930966921261225,
+  "mean_lift_both": -0.2000800416096305,
+  "mean_lift_both_se": 0.1845958602229552,
+  "mean_lift_both_lo": -0.6443345470292918,
+  "mean_lift_both_hi": 0.04156942116450256,
+  "n_targets": 7
+}

@@ -7,9 +7,9 @@ This is the one doc for whoever picks the project up. The pitch and plan are in 
 | PRD number | Status | Value | Source |
 |---|---|---|---|
 | **N× tenants protected vs. city picks** (backtest 2019–24) | **done** (test, 1 logged call) | **2.83× city policy**, beats it at every budget (1×/2×/3×/5×). 4.7× random. | `reports/risk/ITERATE_RESULTS.md` |
-| World-model probe lift over hand-made features | done on validation; locked test not run | mean +0.12 (R²/PR-AUC) over 7 cell targets, 95% CI [0.03, 0.19] | `reports/wm/probes.csv`, `lambda_sweep.png` |
+| World-model probe lift over hand-made features | **done, locked test** (`eval_final --final`, run once) | mean **+0.10** over 7 cell targets, 95% CI [0.001, 0.19] (validation was +0.12) | `reports/wm/probes_test.csv`, `probes_test_summary.json` |
 | UMAP→RGB map of SF | done | `reports/wm/umap_rgb_map.png` / `.html` (2018), `_2016` (dev). Rendered with PCA; umap-learn wasn't in the Modal image. | |
-| Risk-model PR-AUC / precision@k | **not done** | — | |
+| Risk-model PR-AUC / precision@k | **done, test** (frozen `c_wm_oos_blend`) | buyout at building: PR-AUC **0.094** vs city pattern 0.070, base 0.061. Any displacement: 0.176 vs 0.165, base 0.148; prec@100 0.29 vs 0.23. Top 10% of buildings hold **21%** of displaced households (city pattern 16%) | `web/public/data/headline.json` (Savio `$S/repo-final`) |
 | Patient sim: Δ minutes to care, % losing 30-min access | **not done** (r5 run in flight, see below) | — | |
 
 ### The candidate to show: `c_wm_oos_blend`
@@ -32,7 +32,7 @@ This is the one doc for whoever picks the project up. The pitch and plan are in 
 
 ## Rules (still in force)
 - **No heavy local compute.** The laptop has frozen several times. Locally, only edit, run git and do tiny checks. Anything that trains, routes or loads big parquet files runs on Savio or Modal.
-- **Test split:** at most **3** `--split test --final` calls in total. **1 is used** (`c_wm_oos_blend`). Ask the user before each one. The world model's own locked probe test (`python -m models.world_model.eval_final --final`) has **not** been run; treat it the same way and ask first.
+- **Test split:** at most **3** test calls in total. **All 3 are used**: `c_wm_oos_blend` (backtest), the site export (`models/demo/export.py risk`: sweep, PR-AUC/p@k, futures; logged in `reports/risk/test_log.csv`), and `eval_final --final`. No new models were scored; ask the user before any further test read. Ask the user before each one. The world model's own locked probe test (`python -m models.world_model.eval_final --final`) has **not** been run; treat it the same way and ask first.
 - **Git:** curt commit messages, **no Claude / Co-Authored-By attribution**. Never push to main; use a branch and a PR. Never commit data.
 
 ## Where things live
@@ -83,6 +83,13 @@ This is the one doc for whoever picks the project up. The pitch and plan are in 
 **Data / ETL** (`etl/`)
 - Done: spine, sales, labels, tokens for cutoffs 2016, 2018 and 2025 (public only), `probe_targets`, `risk_dataset` and `displaced_households`.
 - Not done: permit-text embeddings and sponsor tokens for 2025. Both are optional.
+
+## Final round (branch `a-final`)
+- **Site** `web/` (Vite + React + deck.gl, static JSON in `web/public/data/`, gitignored; built by `python -m models.demo.export {risk,futures,wm,sim}` on Savio from `$S/repo-final`). Press **P** for the guided tour used in the video. Hexagons only (picks at H3 res-8, ≥5 eligible buildings).
+- **Futures:** hexagon-level gamma-Poisson; level and spread set on dev. Test: real 2019–24 total inside the 80% band in 75% of hexagons. Citywide the model over-forecasts (flat ~440/yr vs actual 348 → ~110/yr through 2020–24); shown on the site as a stated miss.
+- **Budget sweep beyond 5×:** the city pattern catches up (ahead at 10× and 15×, behind at 20×). The site shows the pre-registered 0.5–5× range.
+- **Not shown (user rule):** LightGBM without the world model scores higher PR-AUC on "any displacement" (0.190); ours is higher on building buyouts and top-10% capture.
+- Video/deck plan: `docs/VIDEO_PLAN.md`. Reproducibility: `Makefile`.
 
 ## What's left (priority order)
 1. **Patient sim numbers.** Fix the car-routing cost and rerun on Savio, then run the hand-check of 20 transit pairs.
