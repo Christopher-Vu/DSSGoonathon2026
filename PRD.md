@@ -85,12 +85,19 @@ Verified 2026-11-14 against the live DataSF APIs (`https://data.sfgov.org/resour
 
 | Dataset | Status in shared Drive | Use |
 |---|---|---|
-| **Reddit Posts** | **Visible** (`reddit_posts.csv`, 5.2 GB, with comments; 14 MB sample) | World-model text tokens: housing posts geotagged by neighborhood or street mention (r/sanfrancisco, r/bayarea, housing subs) |
-| **Google Maps Places** | Folder appears empty to us right now | Patient sim (clinics, pharmacies, grocery, Bay Area-wide, so it covers destinations like Antioch and Stockton) + world-model tokens |
-| **Zillow Housing** | Folder appears empty to us right now | Rent estimate vs. rent-controlled rent gap (the incentive to buy tenants out) + price history → risk features |
-| Google Maps Reviews | Folder appears empty to us right now | Optional world-model tokens |
+| Dataset | Files (verified 2026-11-14) | Use |
+|---|---|---|
+| **Zillow** | `Zillow_part1-3.csv` (6.9 GB), 139 columns. `parcelId` = **SF assessor block+lot** (exact join, ~85% filled). `priceHistory` back to 1973; `rentZestimate` ~90% filled | Forward model: rent gap (`rentZestimate` vs. Rent Board rent bucket) and flip history. Price-history ablation |
+| **Google Maps Places** | `google_maps.csv` (483 MB), ~100k POIs, `open_hours` 53% filled; bounding box includes Santa Cruz | **Patient sim** (clinics, pharmacies, grocery) + forward world-model tokens |
+| **Reddit** | `reddit_posts.csv` (4.8 GB), 20 subreddits, **2025+ only** | Forward world-model text tokens (geotagged housing posts) |
+| Google Maps Reviews | `google_maps_reviews.csv` (211 MB), mostly recent | Optional forward tokens (clinic quality in the sim) |
 
-**Fallback if Zillow is unusable:** the assessor's sale history and Prop 13 values cover the flip signal; Zillow becomes an add-on, not a dependency. **The sponsor-data requirement is guaranteed by Reddit** and, once visible, by Places (the patient sim needs it).
+**Rule: sponsor data stays out of the 2018 backtest entirely.** Reddit and Reviews are 2025+, and Places and Zillow are current snapshots, so any of them would leak the future. Zillow's pre-2019 `priceHistory` also carries a selection bias: a building appears only if it was listed in 2025–26.
+
+- **Backtest (§4.5):** public data only.
+- **Sponsor data powers** the ≤2025 world-model checkpoint, the forward-looking 2025 risk map, and the patient sim. That satisfies the "use ≥1 sponsor dataset" requirement.
+- **Optional ablation:** Zillow `priceHistory` features in the backtest, labeled as biased and never in the headline.
+- Sponsor samples are not representative (the Zillow sample is CA-wide; the Reddit sample is random subreddits), so check distributions on the full files.
 
 ---
 
@@ -120,7 +127,7 @@ Verified 2026-11-14 against the live DataSF APIs (`https://data.sfgov.org/resour
 
 ### 4.2 SF World Model (the catchy part)
 - **Cells:** H3 resolution 9 (~0.1 km², ~1.2k cells in SF); resolution 10 as an ablation.
-- **Tokens per cell-year:** every entity in the cell becomes a token: `type embedding + numeric features + optional text embedding`. Types: parcel (units, age, use, value, years since sale), permit, sale event, Places POI (category, rating), Reddit post (frozen MiniLM sentence embedding), review (if available). Add a 2-D sinusoidal position code within the cell and a year embedding.
+- **Tokens per cell-year:** every entity in the cell becomes a token: `type embedding + numeric features + optional text embedding`. Types: parcel (units, age, use, value, years since sale), permit, sale event, eviction and buyout counts (lagged). **The ≤2025 checkpoint only** adds sponsor tokens: Places POI (category, rating), Reddit post (frozen MiniLM sentence embedding), review, Zillow listing (rent estimate, status). The ≤2018 checkpoint has no sponsor tokens. Add a 2-D sinusoidal position code within the cell and a year embedding.
 - **Objective:** `L = (1 − λ) · L_MTM + λ · L_next`
   - `L_MTM`: masked token modeling. Mask 15–30% of tokens; reconstruct the type with cross-entropy and the features with MSE. This term learns what a cell *is*.
   - `L_next` (**the world-model term**): from the cell's year-`t` tokens, predict its year-`t+1` **summary token**. The summary token is an observable vector: counts by token type (sales, permits, POIs, posts), mean and quantiles of the parcel numeric features (assessed value, years since sale), and the counts of new sale events and permits. A small MLP head reads the cell's `[CELL]` token; loss = MSE on standardized features + Poisson NLL on counts. This term learns how a cell *changes*, which is what makes it a world model, not just an encoder.
@@ -128,11 +135,11 @@ Verified 2026-11-14 against the live DataSF APIs (`https://data.sfgov.org/resour
   - **Leakage rule:** for the backtest checkpoint, every `(t, t+1)` training pair has `t+1 ≤ 2018`.
 - **λ ablation sweep (required; a slide in beat 2):**
   - Sweep λ ∈ {0, 0.1, 0.25, 0.5, 0.75, 1.0}. λ=0 is a pure encoder, λ=1 is pure dynamics.
-  - Each run is a short pretrain (~25–30 min on an A40, same seed and token budget), so the sweep takes ~3 h.
+  - Each run uses the same seed and token budget. The 6 runs execute in parallel as a Slurm array on A5000s, so the sweep takes ~15 minutes.
   - **Selection is on the validation window only:** probe PR-AUC on outcomes from `t=2016` (2017–2019) + `L_next` error on 2018. The 2019–2024 test outcomes are never used for selection.
   - The winning λ gets the full-length pretrain. Report a curve of probe lift and next-year error vs. λ; the expected shape is an interior optimum. If λ=0 wins, report that honestly.
 - **Bonus once `L_next` exists:** autoregressive rollouts (`t → t+1 → t+2`) give a learned alternative to hazard sampling for the futures fan (§4.4). That's a stretch only; the MVP futures stay Monte Carlo.
-- **Size:** about 6 layers, d=256. About 1.2k cells × 12 years ≈ 15k sequences, a few hundred tokens each. **This trains in under 2 hours on one A40.**
+- **Size:** **≤10M parameters** (≈6 layers, d=256). About 1.2k cells × 12 years ≈ 15k sequences, a few hundred tokens each. **The full pretrain takes minutes on one A5000** (Savio `savio4_gpu`). There is no overnight training and no Modal.
 - **Output:** a 256-d embedding per cell-year; buildings inherit their cell's embedding plus their own parcel token's contextual embedding.
 - **Probe eval (beat 2):** frozen embeddings + a ridge/logistic probe on ≥3 targets the model never saw. Compare against hand-made features alone and hand-made + embeddings:
   1. block-face eviction rate (2019–24)
@@ -204,13 +211,15 @@ Everything reads from precomputed parquet files, so there's no live training in 
 
 ---
 
-## 6. 48-hour plan (assumes a team of 3–4, one A40)
+## 6. 48-hour plan (assumes a team of 3–4; compute = Savio A5000s, jobs take minutes)
+
+**Order:** the full MVP (§1 headline numbers + demo) comes first. The Loophole Finder starts only after that.
 
 | Hours | Data/ETL | ML | Sim/App |
 |---|---|---|---|
 | 0–2 | Pull all DataSF tables; **measure join rates**; confirm the sponsor folders' contents | Set up the repo skeleton, configs, Makefile | Pull GTFS + PUMS; get r5py running |
 | 2–8 | Parcel×year spine, sale events, block-face labels, hand-check samples | Hex tokenizer; Reddit geotagging + MiniLM embeddings | Places → POI table; origin-destination matrices |
-| 8–14 | Freeze the `t=2018` feature table | **λ sweep (~3h) → full WM pretrain (≤2018) overnight** + baseline risk models | Migration sampler + personas |
+| 8–14 | Freeze the `t=2018` feature table | **λ sweep (~15 min) → full WM pretrain (≤2018, then ≤2025)** + baseline risk models | Migration sampler + personas |
 | 14–22 | Cost model for acquisitions | Probes; GBM ± embeddings; calibration | Sim runs on realized displacement |
 | 22–30 | — | **Optimizer + backtest → headline N×** | App v1 (slider + counters) |
 | 30–38 | Fairness tables, failure cases | WM (≤2025) checkpoint for the forward map | App v2 (futures fan, sim panel) |
