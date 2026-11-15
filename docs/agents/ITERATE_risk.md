@@ -35,7 +35,17 @@ Why run 1 missed it:
 | `test` | end of 2018 | 2019–2024 | 2019–2023 (prereg) |
 
 - A candidate is `models/risk/cands/<name>.py` with `fit_predict(ctx) -> np.ndarray`. `ctx` only exposes data dated ≤ T: `ctx.rows`, `ctx.score`, `ctx.labels(h)`, `ctx.events`, `ctx.emb(kind)` and `ctx.cost(df)`.
-- The baselines `heuristic` and `gbm_tweedie` (run 1) are on the dev leaderboard: `reports/risk/leaderboard_dev.csv`.
+- The baselines `heuristic` and `gbm_tweedie` are on the dev leaderboard: `reports/risk/leaderboard_dev.csv`.
+- **Dev baselines (job 41328605):** both already beat city policy on dev, so dev is easier than test.
+
+| | 1× | 2× | 3× | 5× | score_vs_city |
+|---|---|---|---|---|---|
+| city_policy | 2.2 | 6.6 | 7.1 | 14.2 | — |
+| heuristic | 11.2 | 16.6 | 24.8 | 44.6 | 3.22 |
+| gbm_tweedie | 11.8 | 15.9 | 24.3 | 35.8 | 3.03 |
+| random | 2.9 | 6.3 | 8.4 | 14.0 | — |
+
+  **So the real bar on dev is `score_vs_heuristic` > 1** (beat city policy and the rule at every budget). That's what should carry over to test, where a run-1-style model failed.
 - The primary score is `score_vs_city`, the geometric-mean ratio over 1/2/3/5×. Also check `beats_city_all_budgets`, and compare against the heuristic.
 - **Iterate on dev freely. Never tune on test.** `--split test --final` gets logged to `reports/risk/test_log.csv`.
   - At most **3 test calls total across both sessions**, each one for a frozen, committed candidate.
@@ -81,7 +91,7 @@ Ideas, in rough priority order:
 5. Text embeddings (MiniLM permit descriptions) are optional. If you want them, write the A5000 job that produces `text_emb_{C}.npy` per CONTRACTS.
 
 ## Done =
-`c_wm_gbm` beats city policy at every budget on dev, beats the heuristic on dev, and is frozen and committed. Then one logged test call and a short write-up in `reports/risk/ITERATE_RESULTS.md`, covering:
+`c_wm_gbm` beats city policy at every budget on dev, has `score_vs_heuristic` > 1 on dev (clearly, not 1.01), and is frozen and committed. Then one logged test call and a short write-up in `reports/risk/ITERATE_RESULTS.md`, covering:
 - dev and test tables;
 - the ablation;
 - the honest caveats.
