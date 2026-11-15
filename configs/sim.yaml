@@ -33,7 +33,7 @@ migration:
 
 pois:
   source: auto                  # auto = places if available else osm; or "places" / "osm"
-  default_hours:                # used when open_hours missing/unparseable (weekday)
+  default_hours:                # used when open_hours missing/unparseable (weekday); hospitals default 24h
     clinic: [9, 17]
     pharmacy: [9, 21]
     grocery: [8, 22]
@@ -51,4 +51,4 @@ routing:
 personas:
   working_age: [18, 64]         # depart weekday 18:00, else 10:00
   age_bands: [[0, 24, "18-24"], [25, 44, "25-44"], [45, 64, "45-64"], [65, 200, "65+"]]
-  income_bands: [[-1.0e9, 35000, "<35k"], [35000, 75000, "35-75k"], [75000, 150000, "75-150k"], [150000, 1.0e12, "150k+"]]
+  income_bands: [[-1000000000, 35000, "<35k"], [35000, 75000, "35-75k"], [75000, 150000, "75-150k"], [150000, 1000000000000, "150k+"]]

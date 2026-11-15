@@ -200,15 +200,19 @@ def parse_osm_hours(raw) -> list[tuple[float, float]] | None:
     return result
 
 
+HOSPITAL = re.compile(r"hospital|emergency", re.I)  # hospitals default to 24h (ER), not clinic hours
+
+
 def add_open_flags(df: pd.DataFrame, ranges: pd.Series, default_hours: dict) -> pd.DataFrame:
     df = df.copy()
     df["hours_default"] = ranges.isna().to_numpy()
+    hosp = df["raw_category"].astype(str).str.contains(HOSPITAL).to_numpy()
     for dep, hour in DEPARTS.items():
         col = "open_" + dep.replace("weekday_", "wd")
         vals = []
-        for cls, rng in zip(df["cls"], ranges):
+        for i, (cls, rng) in enumerate(zip(df["cls"], ranges)):
             if rng is None or (isinstance(rng, float) and np.isnan(rng)):
-                a, b = default_hours[cls]
+                a, b = (0, 24) if hosp[i] else default_hours[cls]
                 vals.append(a <= hour < b)
             else:
                 vals.append(_open_at(rng, hour))
