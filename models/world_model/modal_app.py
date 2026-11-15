@@ -33,12 +33,17 @@ KW = dict(image=image, volumes={V: vol}, timeout=45 * 60)
 
 
 def _sh(*args):
+    os.chdir("/")
+    vol.reload()
     os.chdir(V)
     os.makedirs("configs", exist_ok=True)
     subprocess.run(["cp", "/root/repo/configs/wm.yaml", "configs/wm.yaml"], check=True)
     print("+", " ".join(args), flush=True)
-    subprocess.run(["python", "-m", *args], check=True)
-    vol.commit()
+    try:
+        subprocess.run(["python", "-m", *args], check=True)
+    finally:
+        os.chdir("/")
+        vol.commit()
 
 
 @app.function(gpu="A10G", **KW)
@@ -50,6 +55,7 @@ def pretrain(cutoff: int, lam: float, budget: str):
 
 @app.function(cpu=4, memory=16384, **KW)
 def select(cutoff: int, rule: str) -> float:
+    os.chdir("/")  # reload refuses while cwd is inside the volume (warm containers)
     vol.reload()
     _sh("models.world_model.sweep_select", "--config", "configs/wm.yaml", "--cutoff", str(cutoff), "--rule", rule)
     import json
@@ -59,6 +65,7 @@ def select(cutoff: int, rule: str) -> float:
 
 @app.function(gpu="A10G", memory=32768, **KW)
 def export(cutoffs: list[int], lam: float):
+    os.chdir("/")  # reload refuses while cwd is inside the volume (warm containers)
     vol.reload()
     _sh("models.world_model.export", "--config", "configs/wm.yaml", "--device", "cuda", "--lam", str(lam),
         "--cutoffs", *map(str, cutoffs))
@@ -83,6 +90,7 @@ def main(cutoffs: str = "2016,2018", sweep_cutoff: int = 2016, rule: str = "parc
 
 @app.function(gpu="A10G", memory=32768, **KW)
 def oos_run(decision: int, c: int, lam: float):
+    os.chdir("/")  # reload refuses while cwd is inside the volume (warm containers)
     vol.reload()
     _sh("models.world_model.oos", "run", "--config", "configs/wm.yaml", "--decision", str(decision),
         "--model-cutoff", str(c), "--lam", str(lam), "--device", "cuda")
@@ -91,16 +99,21 @@ def oos_run(decision: int, c: int, lam: float):
 
 @app.function(cpu=2, memory=16384, **KW)
 def oos_combine(decisions: list[int]):
+    os.chdir("/")  # reload refuses while cwd is inside the volume (warm containers)
     vol.reload()
     args = [x for T in decisions for x in ("--decision", str(T))]
     _sh("models.world_model.oos", "combine", "--config", "configs/wm.yaml", *args)
 
 
 @app.local_entrypoint()
-def oos_main(lam: float = 0.1, first: int = 2011, decisions: str = "2016,2018"):
+def oos_main(lam: float = 0.1, first: int = 2011, decisions: str = "2016,2018", missing_only: bool = False):
     """Rolling-origin out-of-time parcel features: modal run models/world_model/modal_app.py::oos_main"""
     Ts = [int(t) for t in decisions.split(",")]
     jobs = [(T, c, lam) for T in Ts for c in range(first, T + 1)]
+    if missing_only:
+        have = {e.path for T in Ts for e in vol.listdir(f"data/processed/wm_oos/T={T}") if e.path.endswith(".parquet")}
+        jobs = [(T, c, l) for T, c, l in jobs if f"data/processed/wm_oos/T={T}/pn_{c}.parquet" not in have]
+        print("missing:", jobs)
     for r in oos_run.starmap(jobs, return_exceptions=True):
         print("oos:", r)
     oos_combine.remote(Ts)
