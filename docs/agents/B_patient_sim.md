@@ -6,6 +6,7 @@ You are building the **patient simulation** for the SF World Model datathon proj
 For households displaced from SF, simulate **where they move** (real Census migration flows) and **how their access to care changes**: transit or car time to the nearest *open* clinic, pharmacy and grocery store, before (SF origin) vs. after (destination). Output `sim_results.parquet` and `sim_summary.json` per CONTRACTS §5. The demo line this has to support: *"Each eviction costs X more minutes to care, and Y% lose 30-minute access."*
 
 ## Rules
+- **No heavy local compute.** The laptop froze once already. Anything beyond tiny fixture tests (seconds, <1 GB RAM) goes to Savio as an sbatch handed to stream A.
 - **Git:**
   - work in your own worktree on branch `b-patient-sim`;
   - **commit frequently, with short curt messages** (e.g. `pums loader`, `r5 matrix`), and **no Claude/Co-Authored-By attribution, ever**;
