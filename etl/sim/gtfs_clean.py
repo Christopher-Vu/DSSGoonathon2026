@@ -44,7 +44,7 @@ def main() -> None:
     out = p(cfg, "gtfs_dir")
     out.mkdir(parents=True, exist_ok=True)
     for z in sorted((data_root(cfg) / "raw/sim/gtfs").glob("*.zip")):
-        print(z.name, clean(z, out / z.name))
+        print(z.name, clean(z, out / f"{z.stem}_clean.zip"))  # distinct name: r5py caches inputs by filename
 
 
 if __name__ == "__main__":

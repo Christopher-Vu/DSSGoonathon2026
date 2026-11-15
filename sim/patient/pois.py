@@ -22,25 +22,26 @@ DAY = "tuesday"
 # Reviewed lists: keep exact lower-cased Google category strings. Anything not listed is dropped.
 # Exclusions matter more than inclusions (vet clinics, beauty "clinics", cannabis "pharmacies").
 PLACES_CATEGORY_MAP: dict[str, str] = {
-    # clinic: primary / urgent / community care a household would use
-    "medical clinic": "clinic", "clinic": "clinic", "health clinic": "clinic",
-    "community health centre": "clinic", "community health center": "clinic",
-    "urgent care center": "clinic", "urgent care facility": "clinic", "walk-in clinic": "clinic",
-    "family practice physician": "clinic", "general practitioner": "clinic",
-    "internist": "clinic", "pediatrician": "clinic", "doctor": "clinic", "medical center": "clinic",
-    "hospital": "clinic", "general hospital": "clinic", "public health department": "clinic",
-    "medical group": "clinic", "primary care": "clinic", "women's health clinic": "clinic",
-    "health center": "clinic",
+    # clinic: places an adult can get primary / urgent / community care. Reviewed against the full file's
+    # category counts (2026-11-14). Deliberately OUT: "doctor" (11.6k individual listings, mostly specialists
+    # and duplicates of their clinic), "pediatrician" (children only), "emergency care physician" (ER staff
+    # listings duplicating hospitals), mental-health / dental / PT / specialty clinics.
+    "medical clinic": "clinic", "clinic": "clinic", "health clinic": "clinic", "walk-in clinic": "clinic",
+    "community health centre": "clinic", "community health center": "clinic", "health center": "clinic",
+    "urgent care center": "clinic", "urgent care facility": "clinic", "emergency clinic": "clinic",
+    "family practice physician": "clinic", "general practitioner": "clinic", "internist": "clinic",
+    "medical center": "clinic", "medical group": "clinic", "primary care": "clinic",
+    "hospital": "clinic", "general hospital": "clinic", "women's health clinic": "clinic",
     # pharmacy
-    "pharmacy": "pharmacy", "drug store": "pharmacy", "drugstore": "pharmacy",
-    "chemist": "pharmacy", "compounding pharmacy": "pharmacy",
-    # grocery: full-line food stores (not liquor / convenience)
+    "pharmacy": "pharmacy", "drug store": "pharmacy", "drugstore": "pharmacy", "chemist": "pharmacy",
+    "compounding pharmacy": "pharmacy",
+    # grocery: full-line food stores (not liquor / convenience / food bank / delivery)
     "grocery store": "grocery", "supermarket": "grocery", "asian grocery store": "grocery",
-    "mexican grocery store": "grocery", "health food store": "grocery", "produce market": "grocery",
-    "organic food store": "grocery", "food store": "grocery", "warehouse store": "grocery",
-    "chinese supermarket": "grocery", "korean grocery store": "grocery", "japanese grocery store": "grocery",
-    "indian grocery store": "grocery", "filipino grocery store": "grocery", "latin american grocery store": "grocery",
-    "vietnamese grocery store": "grocery", "fruit and vegetable store": "grocery", "grocery": "grocery",
+    "mexican grocery store": "grocery", "indian grocery store": "grocery", "korean grocery store": "grocery",
+    "japanese grocery store": "grocery", "chinese supermarket": "grocery", "filipino grocery store": "grocery",
+    "latin american grocery store": "grocery", "vietnamese grocery store": "grocery", "gourmet grocery store": "grocery",
+    "produce market": "grocery", "health food store": "grocery", "organic food store": "grocery",
+    "fruit and vegetable store": "grocery", "warehouse store": "grocery", "grocery": "grocery",
 }
 PLACES_EXCLUDE = re.compile(
     r"veterin|animal|pet |dental|dentist|orthodont|cosmetic|beauty|laser|spa|cannabis|marijuana|dispensary|"
@@ -142,8 +143,10 @@ def parse_places_hours(raw) -> list[tuple[float, float]] | None:
     if isinstance(obj, dict):
         for k, v in obj.items():
             if str(k).strip().lower().startswith("tu"):
-                v = ", ".join(v) if isinstance(v, list) else str(v)
-                return _ranges(v)
+                if v is None:
+                    return None
+                v = ", ".join(map(str, v)) if isinstance(v, list) else str(v)
+                return _ranges(v.replace("\n", ", "))
         return None
     if isinstance(obj, list):
         s = " | ".join(map(str, obj))
@@ -221,22 +224,13 @@ def add_open_flags(df: pd.DataFrame, ranges: pd.Series, default_hours: dict) -> 
 
 
 # ---------------------------------------------------------------- loaders
-def map_places_category(category, all_categories) -> str | None:
-    cands = [str(category or "")]
-    if isinstance(all_categories, str) and all_categories:
-        try:
-            v = json.loads(all_categories)
-            cands += [str(x) for x in (v if isinstance(v, list) else [v])]
-        except Exception:
-            cands += [c.strip(" '\"[]") for c in all_categories.split(",")]
-    primary = cands[0].strip().lower()
-    if PLACES_EXCLUDE.search(primary):
+def map_places_category(category, all_categories=None) -> str | None:
+    """Map on the PRIMARY category only: secondary categories are noisy (a psychiatrist listing
+    carries 'Mental Hospital', a liquor store 'Grocery store')."""
+    c = str(category or "").strip().lower()
+    if not c or PLACES_EXCLUDE.search(c):
         return None
-    for c in cands:
-        c = c.strip().lower()
-        if c in PLACES_CATEGORY_MAP and not PLACES_EXCLUDE.search(c):
-            return PLACES_CATEGORY_MAP[c]
-    return None
+    return PLACES_CATEGORY_MAP.get(c)
 
 
 def load_places(csv_path: Path, default_hours: dict, bbox: tuple[float, float, float, float]) -> pd.DataFrame:

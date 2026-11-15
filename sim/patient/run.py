@@ -205,12 +205,15 @@ def main() -> None:
     ap.add_argument("--households", required=True)
     ap.add_argument("--config", default="configs/sim.yaml")
     ap.add_argument("--backend", choices=["r5", "euclid"], help="override routing.backend")
+    ap.add_argument("--pois-source", choices=["auto", "places", "osm"], help="override pois.source")
     ap.add_argument("--no-figures", action="store_true")
-    a = ap.parse_args()
+    a, _ = ap.parse_known_args()  # r5py reads its own flags (e.g. --max-memory 40G) from sys.argv
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s", datefmt="%H:%M:%S")
     cfg = load_config(a.config)
     if a.backend:
         cfg["routing"]["backend"] = a.backend
+    if a.pois_source:
+        cfg["pois"]["source"] = a.pois_source
     res, summary = run(Path(a.households), cfg)
     out_r, out_s = p(cfg, "out_results"), p(cfg, "out_summary")
     out_r.parent.mkdir(parents=True, exist_ok=True)
