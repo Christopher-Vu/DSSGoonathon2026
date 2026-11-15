@@ -20,7 +20,7 @@ Deliverables: GitHub repo, slide deck, ≤5-minute video. Video beats, in order:
 | # | Beat (time) | What's on screen | Machinery it proves |
 |---|---|---|---|
 | 1 | **Hook** (0:00–0:30) | A real Ellis Act notice on a real Mission block. "This was predictable in 2018." | — |
-| 2 | **The world model** (0:30–1:15) | Map of SF colored by the model's learned hexagon embeddings (UMAP→RGB). Neighborhood boundaries show up even though the model never saw any. Table: the same embeddings predict evictions, health violations and overcrowding better than hand-made features. | §4.2 SF World Model |
+| 2 | **The world model** (0:30–1:15) | Map of SF colored by the model's learned hexagon embeddings (UMAP→RGB). Neighborhood boundaries show up even though the model never saw any. Table: the same embeddings predict evictions, health violations and overcrowding better than hand-made features. λ-sweep curve: adding next-year prediction to the training objective improves the embeddings. | §4.2 SF World Model |
 | 3 | **The risk model** (1:15–2:00) | "Frozen in 2018": the model's top-risk buildings, then a time-lapse of 2019–2024 notices landing on them. PR curve vs. baselines. | §4.3 Displacement risk |
 | 4 | **The money shot** (2:00–3:15) | Live app: drag the budget slider, buildings light up, a counter shows "tenants protected" for **our picks vs. the city's actual picks vs. random vs. a heuristic**. A fan of 1,000 sampled futures for one building. | §4.4 Futures + §4.5 Optimizer |
 | 5 | **What eviction costs** (3:15–4:00) | 10,000 simulated displaced households: where they move (real Census migration flows) and how their transit time to the nearest clinic or pharmacy changes. "Each eviction costs X more minutes to care, and Y% lose 30-minute access." | §4.6 Patient sim |
@@ -39,7 +39,7 @@ Deliverables: GitHub repo, slide deck, ≤5-minute video. Video beats, in order:
 
 **In (MVP, all machinery intact):**
 1. Data spine: parcel × year panel 2007–2025 with labels joined (§3).
-2. SF World Model: masked-token transformer over H3 hexagons, pretrained on data from 2018 or earlier (§4.2).
+2. SF World Model: transformer over H3 hexagons trained with masked-token reconstruction + next-year prediction (λ-weighted, with a λ sweep), pretrained on data from 2018 or earlier (§4.2).
 3. Displacement risk model: gradient-boosted model on features + world-model embeddings, with baselines (§4.3).
 4. Futures: Monte Carlo samples from the calibrated hazard. *Not* a generative diffusion model; sampling is enough for the fan chart and the optimizer (§4.4).
 5. Budget optimizer + 2018→2024 counterfactual backtest vs. actual Small Sites picks (§4.5).
@@ -121,7 +121,17 @@ Verified 2026-11-14 against the live DataSF APIs (`https://data.sfgov.org/resour
 ### 4.2 SF World Model (the catchy part)
 - **Cells:** H3 resolution 9 (~0.1 km², ~1.2k cells in SF); resolution 10 as an ablation.
 - **Tokens per cell-year:** every entity in the cell becomes a token: `type embedding + numeric features + optional text embedding`. Types: parcel (units, age, use, value, years since sale), permit, sale event, Places POI (category, rating), Reddit post (frozen MiniLM sentence embedding), review (if available). Add a 2-D sinusoidal position code within the cell and a year embedding.
-- **Objective:** masked token modeling (mask 15–30% of tokens; reconstruct the type with cross-entropy and the features with MSE) + a contrastive loss pulling the same cell's year t and year t+1 together, so embeddings capture trajectory.
+- **Objective:** `L = (1 − λ) · L_MTM + λ · L_next`
+  - `L_MTM`: masked token modeling. Mask 15–30% of tokens; reconstruct the type with cross-entropy and the features with MSE. This term learns what a cell *is*.
+  - `L_next` (**the world-model term**): from the cell's year-`t` tokens, predict its year-`t+1` **summary token**. The summary token is an observable vector: counts by token type (sales, permits, POIs, posts), mean and quantiles of the parcel numeric features (assessed value, years since sale), and the counts of new sale events and permits. A small MLP head reads the cell's `[CELL]` token; loss = MSE on standardized features + Poisson NLL on counts. This term learns how a cell *changes*, which is what makes it a world model, not just an encoder.
+  - Predict observable features, not the next-year *embedding*. That avoids representation collapse and needs no EMA target encoder.
+  - **Leakage rule:** for the backtest checkpoint, every `(t, t+1)` training pair has `t+1 ≤ 2018`.
+- **λ ablation sweep (required; a slide in beat 2):**
+  - Sweep λ ∈ {0, 0.1, 0.25, 0.5, 0.75, 1.0}. λ=0 is a pure encoder, λ=1 is pure dynamics.
+  - Each run is a short pretrain (~25–30 min on an A40, same seed and token budget), so the sweep takes ~3 h.
+  - **Selection is on the validation window only:** probe PR-AUC on outcomes from `t=2016` (2017–2019) + `L_next` error on 2018. The 2019–2024 test outcomes are never used for selection.
+  - The winning λ gets the full-length pretrain. Report a curve of probe lift and next-year error vs. λ; the expected shape is an interior optimum. If λ=0 wins, report that honestly.
+- **Bonus once `L_next` exists:** autoregressive rollouts (`t → t+1 → t+2`) give a learned alternative to hazard sampling for the futures fan (§4.4). That's a stretch only; the MVP futures stay Monte Carlo.
 - **Size:** about 6 layers, d=256. About 1.2k cells × 12 years ≈ 15k sequences, a few hundred tokens each. **This trains in under 2 hours on one A40.**
 - **Output:** a 256-d embedding per cell-year; buildings inherit their cell's embedding plus their own parcel token's contextual embedding.
 - **Probe eval (beat 2):** frozen embeddings + a ridge/logistic probe on ≥3 targets the model never saw. Compare against hand-made features alone and hand-made + embeddings:
@@ -200,7 +210,7 @@ Everything reads from precomputed parquet files, so there's no live training in 
 |---|---|---|---|
 | 0–2 | Pull all DataSF tables; **measure join rates**; confirm the sponsor folders' contents | Set up the repo skeleton, configs, Makefile | Pull GTFS + PUMS; get r5py running |
 | 2–8 | Parcel×year spine, sale events, block-face labels, hand-check samples | Hex tokenizer; Reddit geotagging + MiniLM embeddings | Places → POI table; origin-destination matrices |
-| 8–14 | Freeze the `t=2018` feature table | **Pretrain WM (≤2018) overnight** + baseline risk models | Migration sampler + personas |
+| 8–14 | Freeze the `t=2018` feature table | **λ sweep (~3h) → full WM pretrain (≤2018) overnight** + baseline risk models | Migration sampler + personas |
 | 14–22 | Cost model for acquisitions | Probes; GBM ± embeddings; calibration | Sim runs on realized displacement |
 | 22–30 | — | **Optimizer + backtest → headline N×** | App v1 (slider + counters) |
 | 30–38 | Fairness tables, failure cases | WM (≤2025) checkpoint for the forward map | App v2 (futures fan, sim panel) |
