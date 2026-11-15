@@ -97,6 +97,11 @@ def risk():
         picks[str(m)] = {k: {h: int(v) for h, v in u[sels[k]].groupby("hex8").size().items() if h in ok8}
                          for k in ("model", "city_policy")}
         print(f"{m}x model {row['model']} city {row['city_policy']} random {row['random']}", flush=True)
+    uw = u[["blklot", "bf", "bf_share"]].copy()  # picks for etl.displaced -> patient sim (stays on Savio, gitignored)
+    for m in (1, 5):
+        uw[f"sel_ours_{m}x"] = sel_at[m]["model"]
+        uw[f"sel_city_policy_{m}x"] = sel_at[m]["city_policy"]
+    uw.to_parquet(D / "backtest_universe_wm.parquet", index=False)
     city_hex = {h: int(v) for h, v in u[u.is_city].groupby("hex8").size().items() if h in ok8}
     hex8 = {h: list(h3.cell_to_latlng(h)) for h in ok8}
     t = pd.DataFrame(sweep)
