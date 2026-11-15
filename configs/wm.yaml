@@ -1,0 +1,29 @@
+# SF World Model — production config (A5000). See models/world_model/README.md.
+paths:
+  data_root: data/processed
+  token_features: configs/token_features.yaml
+  probe_features: null          # set to data/processed/probe_features.parquet if stream A provides one
+  ckpt_dir: data/processed/wm
+  reports: reports/wm
+backtest_cutoff: 2018
+model:
+  d_model: 256
+  n_layers: 6
+  n_heads: 8
+  d_ff: 1024
+  dropout: 0.1
+  max_tokens: 512
+train:
+  seed: 0
+  lr: 3.0e-4
+  epochs: {sweep: 12, full: 25}
+  max_minutes: {sweep: 9.0, full: 9.0}
+  batch_tokens: 16384
+  max_batch_seqs: 64
+  bf16: true
+probe:
+  select_year: 2016
+  test_year: 2018
+  n_boot: 1000
+export:
+  parcel_years: {2018: [2014, 2015, 2016, 2017, 2018], 2025: [2025]}

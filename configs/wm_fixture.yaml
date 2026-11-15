@@ -1,0 +1,25 @@
+# Fixture config: small model, CPU, synthetic data from `python -m models.world_model.fixtures`.
+paths:
+  data_root: data/processed/fixture
+  token_features: data/processed/fixture/configs/token_features.yaml
+  ckpt_dir: data/processed/fixture/wm
+  reports: reports/wm/fixture
+model:
+  d_model: 64
+  n_layers: 2
+  n_heads: 4
+  d_ff: 128
+  dropout: 0.0
+  max_tokens: 48
+train:
+  lr: 2.0e-3
+  epochs: {sweep: 15, full: 20}
+  max_minutes: {sweep: 3.0, full: 3.0}
+  batch_tokens: 4096
+  max_batch_seqs: 64
+  patience: 4
+  log_every: 0
+probe:
+  n_boot: 300
+export:
+  parcel_years: {2018: [2016, 2018], 2025: [2025]}
