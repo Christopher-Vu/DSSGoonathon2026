@@ -1,0 +1,16 @@
+# Stream C (SF World Model). Python 3.11.
+# On Savio (CUDA 12.1 wheels):  pip install torch==2.3.1 --index-url https://download.pytorch.org/whl/cu121
+#                               pip install -r requirements-wm.txt
+torch==2.3.1
+numpy==1.26.4          # <2.0 keeps numba/umap-learn happy
+pandas==2.2.2
+pyarrow==16.1.0
+scipy==1.13.1
+scikit-learn==1.5.1
+pyyaml==6.0.1
+h3==4.1.0
+matplotlib==3.9.1
+numba==0.60.0
+umap-learn==0.5.6
+folium==0.17.0
+pytest==8.3.2
