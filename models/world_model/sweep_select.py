@@ -99,6 +99,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/wm.yaml")
     ap.add_argument("--cutoff", type=int, default=2018)
+    ap.add_argument("--rule", choices=["probe", "parcel"], default="probe")
     a = ap.parse_args(argv)
     cfg = load_config(a.config)
     df = collect(cfg, a.cutoff)

@@ -65,12 +65,14 @@ def export(cutoffs: list[int], lam: float):
 
 
 @app.local_entrypoint()
-def main(cutoffs: str = "2016,2018", sweep_cutoff: int = 2016, rule: str = "parcel", lam: float = -1.0):
+def main(cutoffs: str = "2016,2018", sweep_cutoff: int = 2016, rule: str = "parcel", lam: float = -1.0,
+         skip_sweep: bool = False):
     cs = [int(c) for c in cutoffs.split(",")]
     if lam < 0:
         lams = [0.0, 0.1, 0.25, 0.5, 0.75, 1.0]
-        for r in pretrain.starmap([(sweep_cutoff, l, "sweep") for l in lams], return_exceptions=True):
-            print("sweep:", r)
+        if not skip_sweep:
+            for r in pretrain.starmap([(sweep_cutoff, l, "sweep") for l in lams], return_exceptions=True):
+                print("sweep:", r)
         lam = select.remote(sweep_cutoff, rule)
     print(f"selected lam = {lam:g}")
     for r in pretrain.starmap([(c, lam, "full") for c in cs], return_exceptions=True):
