@@ -16,7 +16,8 @@ from pathlib import Path
 
 import modal
 
-REPO = Path(__file__).resolve().parents[2]
+_here = Path(__file__).resolve()
+REPO = _here.parents[2] if len(_here.parents) > 2 else Path("/root/repo")  # container: module sits at /root
 app = modal.App("sf-world-model")
 vol = modal.Volume.from_name("wm-data", create_if_missing=True)
 image = (
