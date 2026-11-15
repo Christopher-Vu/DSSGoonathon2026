@@ -1,0 +1,52 @@
+parcel:
+- log_units
+- age
+- log_assessed
+- log_assessed_per_unit
+- yrs_since_sale
+- rent_ctrl
+- owner_occ
+- stories
+- log_area
+- log_lot_area
+- is_mres
+- is_sres
+- is_comm
+- n_sales_10y
+- log_last_jump
+- beds_per_unit
+sale:
+- log_jump
+- log_assessed_after
+- log_units
+- yrs_since_prev_sale
+- rent_ctrl
+permit:
+- log_cost
+- unit_delta
+- adu
+- demolition
+- new_construction
+- alteration
+- remodel_kw
+- seismic_kw
+- completed
+- log_existing_units
+- unit_removal
+- change_of_use
+eviction_bf:
+- ellis
+- omi
+- non_payment
+- breach
+- nuisance
+- illegal_use
+- capital_improvement
+- demolition
+- substantial_rehab
+- condo_conversion
+- other_cause
+buyout:
+- log_amount
+- tenants
+- is_agreement

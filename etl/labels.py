@@ -47,7 +47,7 @@ def build():
         e[c] = e[c].astype(str).str.lower().eq("true")
     e["ellis_omi"] = e.ellis_act_withdrawal | e.owner_move_in
     e["bf_ok"] = e.bf.isin(set(bf.bf))
-    pt = e.shape.str.extract(r"POINT \(([-\d.]+) ([-\d.]+)\)").astype(float)
+    pt = e["shape"].str.extract(r"POINT \(([-\d.]+) ([-\d.]+)\)").astype(float)
     e["lon"], e["lat"] = pt[0], pt[1]
     e[["eviction_id", "address", "bf", "bf_ok", "year", "lat", "lon", "ellis_omi"] + EVICT_FLAGS].to_parquet(
         INT / "eviction_events.parquet", index=False)

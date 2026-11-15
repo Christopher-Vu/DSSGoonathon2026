@@ -1,0 +1,13 @@
+{
+ "buyout_join_rate": 0.9855039379066317,
+ "buyout_join_how": {
+  "exact": 8476,
+  "near": 155,
+  "NaN": 127,
+  "bare": 3
+ },
+ "eviction_bf_rate": 0.9363146661246061,
+ "eviction_bf_rate_ellis_omi_2010+": 0.9907988289418653,
+ "ssp_join_rate": 0.9655172413793104,
+ "ssp_with_acq_year": 52
+}

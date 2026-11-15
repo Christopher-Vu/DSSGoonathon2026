@@ -41,10 +41,10 @@ One row per token. The cutoff partition guarantees `year <= C`. **`cutoff=2018` 
 |---|---|---|
 | `cell` | string | |
 | `year` | int16 | snapshot year t (features ≤ t) |
-| `target` | string | e.g. `eviction_rate_3y`, `buyout_rate_3y`, `overcrowding`, `inspection_fail_rate` |
+| `target` | string | `eviction_rate_3y`, `nonpayment_rate_3y`, `buyout_rate_3y`, `sale_rate_3y`, `any_ellis_omi_3y` (binary); ACS `overcrowding`, `median_income_log` when available. Outcomes in t+1..t+3 |
 | `value` | float32 | |
 | `task` | string | `regression` or `binary` |
-| `split` | string | `train` / `val` / `test`, assigned by **H3 res-6 parent** (spatial block holdout) |
+| `split` | string | `train` / `val` / `test`, assigned by **H3 res-7 parent** (spatial block holdout; res-6 has only ~8 parents in SF) |
 
 **Time rule:** rows with `year=2016` (outcomes 2017–2019) are for selection and tuning. Rows with `year=2018` (outcomes 2019–2024) are **test only**, read solely by the final-eval entry point behind a `--final` flag.
 
