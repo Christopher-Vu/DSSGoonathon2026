@@ -71,7 +71,9 @@ def plot(df: pd.DataFrame, path: Path, selected: float) -> None:
     ax.set_xlabel("λ  (0 = masked only, 1 = next-year only)")
     ax.set_ylabel("mean probe lift, year-2016 val")
     ax2 = ax.twinx()
-    ax2.plot(x, df["next_probe_mse"], "^-", color="#e67e22", label="next-year error (frozen probe)")
+    ax2.plot(x, df["next_probe_mse"], "^-", color="#e67e22", label="next-year error, hand+emb (frozen probe)")
+    if "next_probe_mse_hand" in df:
+        ax2.axhline(df["next_probe_mse_hand"].iloc[0], color="#e67e22", ls="--", lw=0.8, label="next-year error, hand only")
     ax2.set_ylabel("next-year MSE (2017→2018)", color="#e67e22")
     h1, l1 = ax.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()

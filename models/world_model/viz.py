@@ -48,7 +48,7 @@ def render(cells, E: np.ndarray, png: Path, html: Path | None = None, title: str
             import folium
 
             lat, lng = xy[:, 1].mean(), xy[:, 0].mean()
-            m = folium.Map(location=[lat, lng], zoom_start=12, tiles="cartodbpositron")
+            m = folium.Map(location=[lat, lng], zoom_start=12, tiles="OpenStreetMap")
             for c, poly, col in zip(cells, polys, rgb):
                 hexc = "#%02x%02x%02x" % tuple((col * 255).astype(int))
                 folium.Polygon([(y, x) for x, y in poly], color=None, weight=0, fill=True, fill_color=hexc,

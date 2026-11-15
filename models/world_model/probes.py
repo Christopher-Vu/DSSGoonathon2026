@@ -148,6 +148,14 @@ def next_year_probe(store, E: np.ndarray, alpha: float = 10.0) -> dict:
     Ytr, Yva = (Ytr[:, keep] - mu[keep]) / sd[keep], (Yva[:, keep] - mu[keep]) / sd[keep]
     out = {}
     hand = handmade_frame(store).drop(columns=["cell", "year"]).to_numpy(np.float64)
+    # Center features within each year: the [CELL] output carries the year embedding, and the val
+    # input year (cutoff-1) never appears among the probe's training inputs, so an uncentered linear
+    # probe extrapolates along the year direction.
+    E = np.asarray(E, dtype=np.float64).copy()
+    for y in np.unique(store.seq_year):
+        r = store.seq_year == y
+        E[r] -= E[r].mean(0)
+        hand[r] -= hand[r].mean(0)
     for key, X in (("next_probe_mse", np.concatenate([hand, E], axis=1)), ("next_probe_mse_hand", hand),
                    ("next_probe_mse_emb_only", E)):
         sc = StandardScaler().fit(X[tr])
