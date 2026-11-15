@@ -4,6 +4,7 @@ paths:
   token_features: data/processed/fixture/configs/token_features.yaml
   ckpt_dir: data/processed/fixture/wm
   reports: reports/wm/fixture
+  interim: data/processed/fixture/interim   # absent: parcel head off
 model:
   d_model: 64
   n_layers: 2

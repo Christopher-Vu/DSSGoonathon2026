@@ -9,4 +9,4 @@
 #SBATCH --output=logs/%x_%j.out
 # Export cell/parcel embeddings (both cutoffs) + UMAP maps. Reads checkpoints from $DATA/wm.
 source "${SLURM_SUBMIT_DIR}/models/world_model/slurm/common.sh"
-python -m models.world_model.export --config configs/wm.yaml --device cuda
+python -m models.world_model.export --config configs/wm.yaml --device cuda --cutoffs ${CUTOFFS:-2016 2018}

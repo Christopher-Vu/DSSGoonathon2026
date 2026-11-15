@@ -63,6 +63,8 @@ class WorldModel(nn.Module):
         self.type_head = nn.Linear(d_model, n_types)
         self.feat_head = nn.Linear(d_model, n_types * N_FEAT)
         self.next_head = nn.Sequential(nn.Linear(d_model, d_model), nn.GELU(), nn.Linear(d_model, n_types * (1 + N_FEAT)))
+        # parcel next-year head: parcel token output -> log-rates of (sale, buyout tenants, block-face Ellis/OMI) at t+1
+        self.parcel_head = nn.Sequential(nn.Linear(d_model, d_model // 2), nn.GELU(), nn.Linear(d_model // 2, 3))
 
     def forward(self, batch: dict, masked: torch.Tensor | None = None, text_table: torch.Tensor | None = None):
         type_ids = batch["type_ids"]
@@ -97,7 +99,7 @@ class WorldModel(nn.Module):
         mu = out[:, self.n_types :].view(-1, self.n_types, N_FEAT)
         return log_rate, mu
 
-    def next_loss(self, h, batch):
+    def next_loss(self, h, batch, parcel_weight: float = 1.0):
         hn = batch["has_next"]
         if hn.sum() == 0:
             return h.sum() * 0.0, {}
@@ -107,7 +109,32 @@ class WorldModel(nn.Module):
         means = batch["next_means"][hn]
         v = ~torch.isnan(means) & (counts > 0).unsqueeze(-1)  # masked where the type is absent
         mse = ((mu - torch.nan_to_num(means)) ** 2)[v].mean() if v.any() else mu.sum() * 0.0
-        return pois + mse, {"next_pois": pois.detach(), "next_mse": mse.detach()}
+        loss, parts = pois + mse, {"next_pois": pois.detach(), "next_mse": mse.detach()}
+        if "pnext" in batch and parcel_weight > 0:
+            lp, per = self.parcel_loss(h, batch["pnext"])
+            loss = loss + parcel_weight * lp
+            parts.update({"parcel": lp.detach(), **per})
+        return loss, parts
+
+    def parcel_pred(self, h_tok):
+        return self.parcel_head(h_tok).float()  # log-rates [*, 3]
+
+    def parcel_loss(self, h, pnext):
+        """Poisson NLL per target (mean over parcels where it is defined, log(y!) dropped), summed over targets."""
+        v = ~torch.isnan(pnext)
+        if not v.any():
+            return h.sum() * 0.0, {}
+        rows = v.any(-1)
+        lr = self.parcel_pred(h[rows])
+        y, vv = torch.nan_to_num(pnext[rows]), v[rows]
+        nll = torch.exp(lr) - y * lr
+        tot, per = h.sum() * 0.0, {}
+        for k in range(3):
+            if vv[:, k].any():
+                lk = nll[vv[:, k], k].mean()
+                tot = tot + lk
+                per[f"parcel_{k}"] = lk.detach()
+        return tot, per
 
 
 def count_params(model: nn.Module) -> int:

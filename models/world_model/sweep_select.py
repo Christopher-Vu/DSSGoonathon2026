@@ -53,6 +53,16 @@ def select_lambda(df: pd.DataFrame) -> tuple[float, dict]:
     return float(pick["lam"]), why
 
 
+def select_lambda_parcel(df: pd.DataFrame) -> tuple[float, dict]:
+    cols = [c for c in df.columns if c.startswith("val_parcel_skill_")]
+    if not cols:
+        raise ValueError("no parcel-head skill in metrics; was the sweep run with the interim event tables?")
+    d = df.assign(parcel_skill=df[cols].mean(axis=1)).dropna(subset=["parcel_skill"])
+    pick = d.sort_values(["parcel_skill", "lam"], ascending=[False, True]).iloc[0]
+    return float(pick["lam"]), {"rule": "parcel", "parcel_skill": float(pick["parcel_skill"]),
+                                "skills": {float(l): float(v) for l, v in zip(d["lam"], d["parcel_skill"])}}
+
+
 def plot(df: pd.DataFrame, path: Path, selected: float) -> None:
     import matplotlib
 
@@ -95,19 +105,24 @@ def main(argv=None):
     missing = sorted(set(LAMS) - set(np.round(df["lam"], 6)))
     if missing:
         print(f"warning: missing sweep runs for lam={missing}")
-    lam, why = select_lambda(df)
+    lam, why = select_lambda_parcel(df) if a.rule == "parcel" else select_lambda(df)
     rep = Path(cfg["paths"]["reports"])
     rep.mkdir(parents=True, exist_ok=True)
     cols = ["lam", "mean_lift_emb", "mean_lift_emb_se", "mean_lift_emb_lo", "mean_lift_emb_hi", "mean_lift_both",
             "mean_lift_both_se", "next_probe_mse", "next_probe_mse_hand", "next_probe_mse_emb_only", "val_next_head", "best_val_loss",
-            "train_minutes", "stopped", "n_params"]
+            "train_minutes", "stopped", "n_params"] + sorted(c for c in df.columns if c.startswith("val_parcel_skill_"))
     per_target = [c for c in df.columns if "__" in c]
     df[[c for c in cols if c in df] + per_target].to_csv(rep / "lambda_sweep.csv", index=False)
     plot(df, rep / "lambda_sweep.png", lam)
+    if "mean_lift_emb" not in df:
+        df["mean_lift_emb"] = np.nan
+        df["mean_lift_emb_se"] = np.nan
+    if "next_probe_mse" not in df:
+        df["next_probe_mse"] = np.nan
     src = Path(cfg["paths"]["ckpt_dir"]) / f"cutoff={a.cutoff}" / "sweep" / f"lam={lam:g}" / "probes_val.csv"
     if src.exists():
         pd.read_csv(src).to_csv(rep / "probes.csv", index=False)
-    sel = {"lam": lam, "cutoff": a.cutoff, "rule": RULE, **why}
+    sel = {"lam": lam, "cutoff": a.cutoff, "rule": RULE if a.rule == "probe" else "parcel (see docstring)", **why}
     with open(rep / "selected.json", "w") as f:
         json.dump(sel, f, indent=2)
     print(df[[c for c in cols[:9] if c in df]].to_string(index=False))

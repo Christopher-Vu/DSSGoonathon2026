@@ -85,7 +85,7 @@ def parcel_embeddings(model: WorldModel, store: TokenStore, cfg: dict, dev, year
     lens = np.array([len(ch) + 1 for _, ch in items])
     tt = text_table(store, dev)
     keep_set = set(blklots) if blklots is not None else None
-    ids, yrs, embs = [], [], []
+    ids, yrs, embs, nxt = [], [], [], []
     for b in make_batches(lens, np.arange(len(items)), cfg["train"]["batch_tokens"], cfg["train"]["max_batch_seqs"]):
         seqs = [items[i][0] for i in b]
         batch = collate(store, seqs, [items[i][1] for i in b])
@@ -93,19 +93,25 @@ def parcel_embeddings(model: WorldModel, store: TokenStore, cfg: dict, dev, year
         ty = batch["type_ids"].numpy()
         batch = to_dev(batch, dev)
         with torch.autocast(dev.type, dtype=torch.bfloat16, enabled=dev.type == "cuda" and cfg["train"]["bf16"]):
-            h = model(batch, text_table=tt).float().cpu().numpy()
+            ht = model(batch, text_table=tt).float()
         r, c = np.where(ty == pv)
+        nxt.append(torch.exp(model.parcel_pred(ht[torch.from_numpy(r).to(dev), torch.from_numpy(c).to(dev)])).cpu().numpy())
+        h = ht.cpu().numpy()
         ent = store.entity[tg[r, c]]
         m = np.array([e is not None and (keep_set is None or e in keep_set) for e in ent], dtype=bool)
         ids.append(ent[m])
         yrs.append(store.seq_year[np.asarray(seqs)[r[m]]])
         embs.append(h[r[m], c[m]])
+        nxt[-1] = nxt[-1][m]
     if not ids:
         return pd.DataFrame(columns=["blklot", "year"])
     E = np.concatenate(embs)
     df = pd.DataFrame(E, columns=[f"e{i}" for i in range(E.shape[1])])
     df.insert(0, "year", np.concatenate(yrs).astype(np.int16))
     df.insert(0, "blklot", np.concatenate(ids).astype(str))
+    P = np.concatenate(nxt)
+    for k, name in enumerate(("sale", "buyout", "bf_ellis_omi")):
+        df[f"pn_{name}"] = P[:, k].astype(np.float32)
     # a parcel id can repeat within a cell-year only if A emits duplicates; keep the first
     return df.drop_duplicates(["blklot", "year"]).reset_index(drop=True)
 

@@ -24,6 +24,7 @@ DEFAULTS: dict = {
         "probe_features": None,  # optional hand-made probe-feature table (cell, year, feature cols)
         "ckpt_dir": "data/processed/wm",
         "reports": "reports/wm",
+        "interim": "data/interim",  # event tables for the parcel next-year head (optional)
     },
     "backtest_cutoff": 2018,  # cutoffs <= this may not contain sponsor types
     "sponsor_types": list(DEFAULT_SPONSOR_TYPES),
@@ -55,6 +56,12 @@ DEFAULTS: dict = {
         "bf16": True,
         "log_every": 50,
     },
+    "parcel_next": {
+        # per-parcel t+1 targets (Poisson): sales of the parcel, buyout tenants at the parcel,
+        # Ellis/OMI notices on its block-face. Built from data/interim events dated <= cutoff.
+        "weight": 1.0,
+        "first_buyout_year": 2015,  # buyout records start 2015-03; earlier years are unknown, not zero
+    },
     "probe": {
         "select_year": 2016,
         "test_year": 2018,
@@ -64,9 +71,9 @@ DEFAULTS: dict = {
     },
     "export": {
         # parcel embeddings are big (200k parcels x 256 floats per year); export only these years
-        "parcel_years": {2018: [2014, 2015, 2016, 2017, 2018], 2025: [2025]},
+        "parcel_years": {2016: [2012, 2013, 2014, 2015, 2016], 2018: [2014, 2015, 2016, 2017, 2018], 2025: [2025]},
         "parcel_filter": None,  # optional parquet with a `blklot` column
-        "umap_year": {2018: 2018, 2025: 2025},
+        "umap_year": {2016: 2016, 2018: 2018, 2025: 2025},
     },
 }
 

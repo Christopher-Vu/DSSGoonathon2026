@@ -79,6 +79,7 @@ class TokenStore:
     means: np.ndarray  # [S,T,16] float32, per-type feature means, NaN where undefined
     next_seq: np.ndarray  # [S] int64, index of (cell, year+1) or -1
     text_emb: np.ndarray | None = None
+    pnext: np.ndarray | None = None  # [N,3] float32 parcel t+1 targets (sale, buyout, bf Ellis/OMI), NaN = n/a
     token_types_seen: list[str] = field(default_factory=list)
 
     @property
@@ -167,12 +168,65 @@ def build_store(df: pd.DataFrame, cfg: dict, cutoff: int, schema: dict, text_emb
     )
 
 
+PNEXT = ("sale", "buyout", "bf_ellis_omi")
+
+
+def read_events(cfg: dict, cutoff: int) -> dict | None:
+    """Event tables for the parcel head, cut at year <= cutoff (asserted). None if absent."""
+    root = Path(cfg["paths"].get("interim") or "data/interim")
+    need = ["sales", "buyout_events", "eviction_events", "parcel_blockface"]
+    if not all((root / f"{n}.parquet").exists() for n in need):
+        return None
+    sa = pd.read_parquet(root / "sales.parquet", columns=["blklot", "sale_year"]).rename(columns={"sale_year": "year"})
+    bo = pd.read_parquet(root / "buyout_events.parquet", columns=["blklot", "year", "tenants_share"])
+    ev = pd.read_parquet(root / "eviction_events.parquet", columns=["bf", "bf_ok", "year", "ellis_omi"])
+    ev = ev[ev.bf_ok.fillna(False).astype(bool) & ev.ellis_omi.fillna(False).astype(bool)][["bf", "year"]]
+    out = {}
+    for k, d in (("sales", sa), ("buyouts", bo), ("evictions", ev)):
+        d = d.dropna(subset=["year"])
+        d = d[d.year <= cutoff].copy()
+        d["year"] = d.year.astype(int)
+        assert len(d) == 0 or d.year.max() <= cutoff
+        out[k] = d
+    out["pbf"] = pd.read_parquet(root / "parcel_blockface.parquet", columns=["blklot", "bf"]).drop_duplicates("blklot")
+    return out
+
+
+def parcel_next_targets(store: TokenStore, ev: dict, cfg: dict) -> np.ndarray:
+    """[N,3] per-token targets for parcel tokens at year t: counts in year t+1 of (sales of the parcel,
+    buyout tenants at the parcel, Ellis/OMI notices on its block-face). NaN for non-parcel tokens,
+    t+1 > cutoff, buyouts before first_buyout_year, and parcels without a block-face."""
+    C, fby = store.cutoff, int(cfg["parcel_next"]["first_buyout_year"])
+    N = len(store.tok_type)
+    out = np.full((N, 3), np.nan, dtype=np.float32)
+    seq_of = np.repeat(np.arange(store.n_seq), np.diff(store.offsets))
+    yr = store.seq_year[seq_of].astype(int)
+    ip = np.where((store.tok_type == store.parcel_vid) & (yr + 1 <= C))[0]
+    if len(ip) == 0:
+        return out
+    t = pd.DataFrame({"blklot": store.entity[ip].astype(str), "year": yr[ip] + 1})
+    t = t.merge(ev["pbf"].astype({"blklot": str}), on="blklot", how="left")
+    sale = ev["sales"].astype({"blklot": str}).groupby(["blklot", "year"]).size().rename("v")
+    bo = ev["buyouts"].astype({"blklot": str}).groupby(["blklot", "year"]).tenants_share.sum().rename("v")
+    bfn = ev["evictions"].groupby(["bf", "year"]).size().rename("v")
+    out[ip, 0] = t.join(sale, on=["blklot", "year"]).v.fillna(0).to_numpy(np.float32)
+    b = t.join(bo, on=["blklot", "year"]).v.fillna(0).to_numpy(np.float32)
+    out[ip, 1] = np.where(t.year.to_numpy() >= fby, b, np.nan)
+    f = t.join(bfn, on=["bf", "year"]).v.fillna(0).to_numpy(np.float32)
+    out[ip, 2] = np.where(t.bf.notna().to_numpy(), f, np.nan)
+    return out
+
+
 def load_store(cfg: dict, cutoff: int) -> TokenStore:
     schema = load_feature_schema(cfg["paths"]["token_features"])
     df = read_tokens(cfg, cutoff)
     p = Path(cfg["paths"]["data_root"]) / f"text_emb_{cutoff}.npy"
     text_emb = np.load(p, mmap_mode="r") if p.exists() else None
-    return build_store(df, cfg, cutoff, schema, text_emb)
+    store = build_store(df, cfg, cutoff, schema, text_emb)
+    ev = read_events(cfg, cutoff)
+    if ev is not None and store.parcel_vid >= 0:
+        store.pnext = parcel_next_targets(store, ev, cfg)
+    return store
 
 
 # ---------------------------------------------------------------- subsampling
@@ -300,4 +354,9 @@ def collate(store: TokenStore, seq_ids, tok_lists: list[np.ndarray], next_ok: np
         "next_counts": torch.from_numpy(store.counts[safe].reshape(B, T)),
         "next_means": torch.from_numpy(store.means[safe].reshape(B, T, N_FEAT)),
     }
+    if store.pnext is not None:
+        # parcel head targets share the (cell, t+1) gate, so they follow the same train/val year split
+        pn = np.where((tok_global >= 0)[..., None], store.pnext[np.maximum(tok_global, 0)], np.nan).astype(np.float32)
+        pn[~has_next] = np.nan
+        out["pnext"] = torch.from_numpy(pn)
     return out

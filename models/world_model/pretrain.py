@@ -20,7 +20,7 @@ import pandas as pd
 import torch
 
 from .config import is_backtest, load_config, run_dir, seed_everything
-from .data import collate, load_store, make_batches, select_tokens
+from .data import PNEXT, collate, load_store, make_batches, select_tokens
 from .infer import cell_embeddings, device_of, save_checkpoint, text_table, to_dev
 from .leakage import assert_checkpoint_ok, load_probe_targets
 from .model import WorldModel, count_params, sample_mask
@@ -72,18 +72,48 @@ def evaluate(model, store, cfg, lam, sp, dev, tt) -> dict:
         mtm += float(l) * len(b)
         n_m += len(b)
     nxt, n_n = 0.0, 0
+    pw = float(cfg["parcel_next"]["weight"])
+    base = parcel_base_rates(store, sp)
+    p_nll, p_base, p_n = np.zeros(3), np.zeros(3), np.zeros(3)
     for b in make_batches(lens, sp["next_val"], tr["batch_tokens"], tr["max_batch_seqs"]):
         batch = to_dev(collate(store, b, [select_tokens(store, s, cap, None) for s in b], sp["val_next_mask"]), dev)
         with torch.autocast(**amp):
             h = model(batch, None, tt)
-        l, _ = model.next_loss(h.float(), batch)
+        h = h.float()
+        l, _ = model.next_loss(h, batch, pw)
         nxt += float(l) * len(b)
         n_n += len(b)
+        if "pnext" in batch and base is not None:
+            v = ~torch.isnan(batch["pnext"])
+            rows = v.any(-1)
+            if rows.any():
+                lr = model.parcel_pred(h[rows]).cpu().numpy()
+                y, vv = batch["pnext"][rows].cpu().numpy(), v[rows].cpu().numpy()
+                for k in range(3):
+                    yk = y[vv[:, k], k]
+                    p_nll[k] += float((np.exp(lr[vv[:, k], k]) - yk * lr[vv[:, k], k]).sum())
+                    p_base[k] += float((base[k] - yk * np.log(base[k])).sum())
+                    p_n[k] += len(yk)
     mtm = mtm / max(n_m, 1) if n_m else float("nan")
     nxt = nxt / max(n_n, 1) if n_n else float("nan")
     tot = (1 - lam) * (0 if lam == 1 else mtm) + lam * (0 if lam == 0 else nxt)
     model.train()
-    return {"val_mtm": mtm, "val_next": nxt, "val_loss": tot}
+    out = {"val_mtm": mtm, "val_next": nxt, "val_loss": tot}
+    for k, name in enumerate(PNEXT):
+        if p_n[k]:
+            # skill = 1 - NLL(model)/NLL(train-mean rate), on held-out (C-1 -> C) parcel pairs; > 0 beats the base rate
+            out[f"val_parcel_skill_{name}"] = 1 - p_nll[k] / p_base[k] if p_base[k] else float("nan")
+    return out
+
+
+def parcel_base_rates(store, sp):
+    """Train-split mean t+1 rate per parcel target (floored), for the skill baseline."""
+    if store.pnext is None:
+        return None
+    seq_of = np.repeat(np.arange(store.n_seq), np.diff(store.offsets))
+    tr = sp["train_next"][seq_of]
+    y = store.pnext[tr]
+    return np.maximum(np.nanmean(y, axis=0), 1e-6) if len(y) else None
 
 
 def train(cfg: dict, store, lam: float, budget: str, dev, log=print):
@@ -125,7 +155,7 @@ def train(cfg: dict, store, lam: float, budget: str, dev, log=print):
             h = h.float()
             l_mtm, _ = model.mtm_loss(h, batch, m) if lam < 1 else (h.sum() * 0, {})
             # L_next reads the [CELL] output; with λ<1 the input is the masked view (cheap, acts as dropout)
-            l_next, _ = model.next_loss(h, batch) if lam > 0 else (h.sum() * 0, {})
+            l_next, _ = model.next_loss(h, batch, float(cfg["parcel_next"]["weight"])) if lam > 0 else (h.sum() * 0, {})
             loss = (1 - lam) * l_mtm + lam * l_next
             opt.zero_grad(set_to_none=True)
             loss.backward()
@@ -197,6 +227,9 @@ def run(cfg: dict, cutoff: int, lam: float, budget: str, device=None, log=print)
     metrics = {"cutoff": cutoff, "lam": lam, "budget": budget, **{k: v for k, v in info.items() if k != "history"}}
     metrics.update(next_year_probe(store, E, cfg["probe"]["next_ridge_alpha"]))
     metrics["val_next_head"] = min((h["val_next"] for h in info["history"]), default=float("nan"))
+    best_ep = min(info["history"], key=lambda h: h["val_loss"]) if info["history"] else {}
+    metrics.update({k: v for k, v in best_ep.items() if k.startswith("val_parcel_skill")})
+    metrics["parcel_head"] = store.pnext is not None
     if is_backtest(cfg, cutoff):
         table, summ = probe_eval(cfg, store, E, log)
         if table is not None:
@@ -221,12 +254,15 @@ def main(argv=None):
     ap.add_argument("--device", default=None)
     ap.add_argument("--data-root", default=None, help="override paths.data_root (e.g. node-local /tmp)")
     ap.add_argument("--ckpt-dir", default=None)
+    ap.add_argument("--interim", default=None, help="override paths.interim (event tables for the parcel head)")
     a = ap.parse_args(argv)
     over = {"paths": {}}
     if a.data_root:
         over["paths"]["data_root"] = a.data_root
     if a.ckpt_dir:
         over["paths"]["ckpt_dir"] = a.ckpt_dir
+    if a.interim:
+        over["paths"]["interim"] = a.interim
     cfg = load_config(a.config, over)
     run(cfg, a.cutoff, a.lam, a.budget, a.device)
 

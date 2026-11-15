@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from .config import load_config, run_dir
-from .data import load_store
+from .data import PNEXT, load_store
 from .infer import cell_embeddings, check_store_matches, device_of, load_checkpoint, parcel_embeddings
 from .viz import render
 
@@ -46,7 +46,7 @@ def find_run(cfg: dict, cutoff: int, lam: float) -> Path:
     raise FileNotFoundError(f"no checkpoint for cutoff={cutoff} lam={lam:g}")
 
 
-def export_cutoff(cfg: dict, cutoff: int, lam: float, dev) -> tuple[pd.DataFrame, pd.DataFrame]:
+def export_cutoff(cfg: dict, cutoff: int, lam: float, dev, next_out: list | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
     model, meta = load_checkpoint(find_run(cfg, cutoff, lam), cfg, dev)
     store = load_store(cfg, cutoff)
     check_store_matches(store, meta)
@@ -62,10 +62,13 @@ def export_cutoff(cfg: dict, cutoff: int, lam: float, dev) -> tuple[pd.DataFrame
     years = cfg["export"]["parcel_years"].get(cutoff)
     par = parcel_embeddings(model, store, cfg, dev, years=years, blklots=blk)
     par_df = contract_frame(par, "blklot", cutoff, lam, model.d) if len(par) else par
+    if len(par) and next_out is not None:  # parcel next-year head outputs (expected t+1 counts)
+        next_out.append(par[["blklot", "year", *[f"pn_{k}" for k in PNEXT]]].assign(
+            cutoff=np.int16(cutoff), lam=np.float32(lam)))
     rep = Path(cfg["paths"]["reports"])
     uy = cfg["export"]["umap_year"].get(cutoff, int(store.seq_year.max()))
     sel = cell_df[cell_df["year"] == uy]
-    suffix = "" if cutoff == min(cfg["export"]["umap_year"]) else f"_{cutoff}"
+    suffix = "" if cutoff == int(cfg["backtest_cutoff"]) else f"_{cutoff}"
     how = render(sel["cell"].tolist(), sel[[f"e{i}" for i in range(model.d)]].to_numpy(), rep / f"umap_rgb_map{suffix}.png",
                  rep / f"umap_rgb_map{suffix}.html", title=f"SF World Model, cutoff={cutoff}, year={uy}, λ={lam:g}")
     print(f"cutoff={cutoff}: {len(cell_df)} cell rows, {len(par_df)} parcel rows, map via {how}")
@@ -82,14 +85,16 @@ def main(argv=None):
     cfg = load_config(a.config)
     lam = a.lam if a.lam is not None else selected_lam(cfg)
     dev = device_of(a.device)
-    cells, parcels = [], []
+    cells, parcels, nxt = [], [], []
     for c in a.cutoffs:
-        cd, pd_ = export_cutoff(cfg, c, lam, dev)
+        cd, pd_ = export_cutoff(cfg, c, lam, dev, nxt)
         cells.append(cd)
         parcels.append(pd_)
     root = Path(cfg["paths"]["data_root"])
     pd.concat(cells, ignore_index=True).to_parquet(root / "cell_embeddings.parquet", compression="snappy", index=False)
     pd.concat(parcels, ignore_index=True).to_parquet(root / "parcel_embeddings.parquet", compression="snappy", index=False)
+    if nxt:  # read by candidates as ctx.emb("parcel_next")
+        pd.concat(nxt, ignore_index=True).to_parquet(root / "parcel_next_embeddings.parquet", index=False)
     print(f"wrote {root / 'cell_embeddings.parquet'} and {root / 'parcel_embeddings.parquet'}")
 
 
