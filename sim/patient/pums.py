@@ -123,7 +123,7 @@ def fit_migration(mv: pd.DataFrame, region: set[str], cfg: dict, years=None,
     k = len(support)
     beta = 1.0  # tiny uniform floor so unseen region PUMAs stay possible
     cnt = np.zeros(k)
-    np.add.at(cnt, keep["puma"].map(idx).to_numpy(), keep["w"].to_numpy())
+    np.add.at(cnt, keep["puma"].map(idx).to_numpy(dtype=np.int64), keep["w"].to_numpy(dtype=float))
     marginal = (cnt + beta * cnt.sum() / max(k, 1) / 100 * np.ones(k))
     marginal = marginal / marginal.sum()
     alpha = float(mc["smoothing_alpha"])
@@ -132,7 +132,7 @@ def fit_migration(mv: pd.DataFrame, region: set[str], cfg: dict, years=None,
     for b in bands:
         sb = keep[keep["income_band"] == b]
         cb = np.zeros(k)
-        np.add.at(cb, sb["puma"].map(idx).to_numpy(), sb["w"].to_numpy())
+        np.add.at(cb, sb["puma"].map(idx).to_numpy(dtype=np.int64), sb["w"].to_numpy(dtype=float))
         n_eff = len(sb)  # pseudo-count in records, scaled to weight units
         scale = cb.sum() / n_eff if n_eff else 0.0
         pr = cb + alpha * scale * marginal if n_eff else marginal.copy()

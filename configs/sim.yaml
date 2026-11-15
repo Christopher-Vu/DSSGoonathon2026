@@ -10,7 +10,7 @@ paths:
   puma_shapes: raw/sim/tiger/tl_2020_06_puma20.zip
   blocks: raw/sim/tiger/tl_2020_06_tabblock20.zip
   osm_pbf: raw/sim/osm/region.osm.pbf          # clipped by etl/sim/clip_osm.py
-  gtfs_dir: raw/sim/gtfs                         # every *.zip here is loaded
+  gtfs_dir: processed/sim/gtfs                   # every *.zip here is loaded (cleaned by etl/sim/gtfs_clean.py)
   places_csv: raw/sponsor/google_maps.csv
   osm_pois: processed/sim/pois_osm.parquet
   places_pois: processed/sim/pois_places.parquet
