@@ -1,0 +1,7 @@
+# Fast fixture run: inherits sim.yaml, small scenario sizes.
+inherit: sim.yaml
+min_households_per_scenario: 500
+paths:
+  out_results: processed/sim_fixture/sim_results.parquet
+  out_summary: processed/sim_fixture/sim_summary.json
+  reports: reports/sim/fixture
