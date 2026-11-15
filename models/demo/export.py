@@ -135,41 +135,9 @@ def risk():
                    "commit": commit, **{f"pr_auc_{k}": v["model"]["pr_auc"] for k, v in metrics.items() if "model" in v and isinstance(v["model"], dict)}}]) \
         .to_csv(Path("reports/risk/test_log.csv"), mode="a", header=not Path("reports/risk/test_log.csv").exists(), index=False)
 
-    # --- futures: compound Poisson from the model's households/yr; event size from training labels (<= T)
-    lab = ctx.labels(1)
-    lab = lab[lab.t >= 2014]
-    size = float(lab.y_val[lab.y_val > 0].mean())
-    lam = u.score.values / size  # events / yr
-    real_y = np.stack([sum(bt.realized_value(u, y, y)) for y in YEARS], 1)  # buildings x years, households
-    ND = 1000
-    frng = np.random.default_rng(1)
-    hx = u.hex8.values
-    hexes = sorted(ok8)
-    hid = {h: i for i, h in enumerate(hexes)}
-    gi = np.array([hid.get(h, -1) for h in hx])
-    sims_hex = np.zeros((ND, len(hexes), len(YEARS)), np.float32)
-    sims_city = np.zeros((ND, len(YEARS)), np.float32)
-    for j in range(len(YEARS)):
-        draws = frng.poisson(lam[None, :], size=(ND, len(u))).astype(np.float32) * size
-        sims_city[:, j] = draws.sum(1)
-        m = gi >= 0
-        for d in range(ND):
-            sims_hex[d, :, j] = np.bincount(gi[m], weights=draws[d, m], minlength=len(hexes))
-    cum_hex, cum_city = sims_hex.cumsum(2), sims_city.cumsum(1)
-    real_hex = np.zeros((len(hexes), len(YEARS)))
-    for j in range(len(YEARS)):
-        real_hex[:, j] = np.bincount(gi[gi >= 0], weights=real_y[gi >= 0, j], minlength=len(hexes))
-    real_hex, real_city = real_hex.cumsum(1), real_y.sum(0).cumsum()
-    Q = [10, 25, 50, 75, 90]
-
-    def fan(cum, real):
-        return {"q": {str(q): [r(x, 2) for x in np.percentile(cum, q, axis=0)] for q in Q},
-                "paths": [[r(x, 2) for x in cum[i]] for i in range(0, ND, ND // 40)], "realized": [r(x, 2) for x in real]}
-    p10, p90 = np.percentile(cum_hex[:, :, -1], 10, 0), np.percentile(cum_hex[:, :, -1], 90, 0)
-    inside = (real_hex[:, -1] >= p10) & (real_hex[:, -1] <= p90)
-    futures = {"years": YEARS, "event_size": r(size, 3), "city": fan(cum_city, real_city),
-               "hex": {h: fan(cum_hex[:, i, :], real_hex[i]) for i, h in enumerate(hexes)},
-               "coverage_80": r(inside.mean(), 3), "n_hex": len(hexes)}
+    # --- futures: hex-level gamma-Poisson, level + dispersion calibrated on dev (T=2016, outcomes 2017-19)
+    cal = calibrate_futures()
+    futures = make_futures(ctx, u, ok8, cal)
 
     # --- frozen-2018 risk map (res-9, all rent-controlled buildings) + 2019-24 event time-lapse
     sc["hex9"] = sc.cell
@@ -205,6 +173,95 @@ def risk():
     dump("risk_map", risk_map)
     print(json.dumps({**headline, "metrics": metrics, "coverage_80": futures["coverage_80"],
                       "top_decile_share": risk_map["top_decile_share"]}, indent=1, default=float))
+
+
+def event_size(ctx):
+    lab = ctx.labels(1)
+    lab = lab[lab.t >= 2014]
+    return float(lab.y_val[lab.y_val > 0].mean())
+
+
+def draw(rate, k, years, rng, nd=1000):
+    """rate: (n_hex,) events/yr. Each hex gets one persistent Gamma(k, 1/k) multiplier per future (mean 1),
+    then independent Poisson counts per year. Returns (nd, n_hex, years) event counts."""
+    g = rng.gamma(k, 1 / k, size=(nd, len(rate))) if np.isfinite(k) else np.ones((nd, len(rate)))
+    return rng.poisson((g * rate[None, :])[:, :, None], size=(nd, len(rate), years))
+
+
+def calibrate_futures(grid=(0.25, 0.4, 0.6, 0.8, 1.0, 1.5, 2.0, 3.0, 5.0, 8.0, 15.0, np.inf)):
+    """Leak-free w.r.t. test: run the frozen candidate on dev (decide 2016), compare to 2017-19 outcomes.
+    level = realized / predicted households; k = gamma shape whose hex-level 80% band covers ~80% of dev hexes."""
+    from models.risk import harness as H
+    from models.risk.cands.c_wm_oos_blend import fit_predict
+    ctx = H.make_ctx(2016)
+    s = np.asarray(fit_predict(ctx), float)
+    u, keep = H.universe(ctx, "dev")
+    u["score"] = np.clip(s[keep], 0, None)
+    u["hex8"] = parent(u.cell, 8)
+    size = event_size(ctx)
+    ny = 3
+    level = float(u.value.sum() / (ny * u.score.sum()))
+    n8 = u.groupby("hex8").size()
+    hx = n8[n8 >= MIN_BLDG].index
+    lam = (u.groupby("hex8").score.sum().reindex(hx) * level / size).to_numpy()
+    real = u.groupby("hex8").value.sum().reindex(hx).to_numpy()
+    rng = np.random.default_rng(7)
+    cov = {}
+    for k in grid:
+        tot = draw(lam, k, ny, rng).sum(2) * size
+        lo, hi = np.percentile(tot, 10, 0), np.percentile(tot, 90, 0)
+        cov[k] = float(((real >= lo) & (real <= hi)).mean())
+    kbest = min(cov, key=lambda k: abs(cov[k] - 0.8))
+    print("futures calibration (dev): level", round(level, 3), "coverage by k", {str(k): round(v, 3) for k, v in cov.items()},
+          "-> k", kbest, flush=True)
+    return {"level": level, "k": kbest, "dev_coverage": cov[kbest], "dev_size": size}
+
+
+def make_futures(ctx, u, ok8, cal, nd=1000):
+    from models.risk import backtest as bt
+    size = event_size(ctx)
+    hall = sorted(set(u.hex8.dropna()))
+    lam = (u.groupby("hex8").score.sum().reindex(hall) * cal["level"] / size).to_numpy()
+    rng = np.random.default_rng(1)
+    cum = draw(lam, cal["k"], len(YEARS), rng, nd).astype(np.float32).cumsum(2) * size  # (nd, hex, yr)
+    real_y = pd.DataFrame({y: sum(bt.realized_value(u, y, y)) for y in YEARS}).groupby(u.hex8.values).sum()
+    real = real_y.reindex(hall).fillna(0).to_numpy().cumsum(1)
+    Q = [10, 25, 50, 75, 90]
+
+    def fan(c, rl):
+        return {"q": {str(q): [r(x, 2) for x in np.percentile(c, q, axis=0)] for q in Q},
+                "paths": [[r(x, 2) for x in c[i]] for i in range(0, nd, nd // 40)], "realized": [r(x, 2) for x in rl]}
+    ok = [i for i, h in enumerate(hall) if h in ok8]
+    p10, p90 = np.percentile(cum[:, ok, -1], 10, 0), np.percentile(cum[:, ok, -1], 90, 0)
+    inside = (real[ok, -1] >= p10) & (real[ok, -1] <= p90)
+    city = cum.sum(1)
+    city_real = real.sum(0)
+    cl, ch = np.percentile(city[:, -1], [10, 90])
+    out = {"years": YEARS, "event_size": r(size, 3), "calibration": {k: r(v, 3) for k, v in cal.items()},
+           "city": fan(city, city_real), "hex": {hall[i]: fan(cum[:, i, :], real[i]) for i in ok},
+           "coverage_80": r(inside.mean(), 3), "n_hex": len(ok), "city_inside_80": bool(cl <= city_real[-1] <= ch)}
+    print("futures test: coverage_80", out["coverage_80"], "city", r(np.median(city[:, -1]), 1), [r(cl, 1), r(ch, 1)],
+          "real", r(city_real[-1], 1), flush=True)
+    return out
+
+
+def futures_only():
+    """Rebuild futures.json without re-running (or re-logging) the sweep / metrics."""
+    from models.risk import harness as H
+    from models.risk.cands.c_wm_oos_blend import fit_predict
+    ctx = H.make_ctx(2018)
+    s = np.asarray(fit_predict(ctx), float)
+    u, keep = H.universe(ctx, "test")
+    u["score"] = np.clip(s[keep], 0, None)
+    u["hex8"] = parent(u.cell, 8)
+    n8 = u.groupby("hex8").size()
+    fut = make_futures(ctx, u, set(n8[n8 >= MIN_BLDG].index), calibrate_futures())
+    dump("futures", fut)
+    hp = OUT / "headline.json"
+    if hp.exists():
+        h = json.loads(hp.read_text())
+        h["coverage_80"] = fut["coverage_80"]
+        dump("headline", h)
 
 
 # ------------------------------------------------------------------ world model
@@ -307,7 +364,7 @@ def sim():
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("what", choices=["risk", "wm", "sim", "all"])
+    ap.add_argument("what", choices=["risk", "wm", "sim", "futures", "all"])
     a = ap.parse_args()
     for w in (["risk", "wm", "sim"] if a.what == "all" else [a.what]):
-        globals()[w]()
+        (futures_only if w == "futures" else globals()[w])()
