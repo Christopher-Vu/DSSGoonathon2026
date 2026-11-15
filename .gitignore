@@ -2,3 +2,20 @@
 data/
 __pycache__/
 *.parquet
+
+# video raw takes + renders (large, never commit)
+vid/
+video/out/
+video/work/
+
+# planning / handoff / dev docs (kept locally, not published)
+PRD.md
+STATUS.md
+docs/
+sim/patient/HANDOFF.md
+reports/risk/ITERATE_RESULTS.md
+# dev iteration artifacts
+reports/risk/b/
+reports/risk/test_log*.csv
+reports/sim/fixture/
+reports/sim/fixture_savio/
