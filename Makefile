@@ -37,10 +37,7 @@ risk:
 	$(if $(FINAL),$(PY) -m models.risk.harness --cand c_wm_oos_blend --split test --final)
 	$(if $(FINAL),$(PY) -m models.world_model.eval_final --final)
 
-backdeploy:  # static build -> Vercel (project linked once in web/deploy)
-	cd web && npm run build && rm -rf deploy/assets deploy/data && cp -r dist/. deploy/ && cd deploy && npx vercel deploy --prod --yes
-
-test:
+backtest:
 	$(PY) -m models.demo.export risk
 	$(PY) -m etl.displaced --tag wm
 
