@@ -1,0 +1,16 @@
+# Stream B (patient sim). Python 3.11. r5py needs Java >= 21 (JAVA_HOME).
+r5py==1.1.7
+jpype1==1.7.1
+geopandas==1.2.0
+shapely==2.2.0
+pandas==3.1.1
+numpy==2.4.6
+pyarrow==26.0.1
+h3==4.5.0
+pyyaml==6.0.3
+python-dotenv==1.2.4
+osmium==4.3.2
+matplotlib==3.11.2
+scipy==1.17.1
+requests==2.34.2
+pytest==9.2.0
