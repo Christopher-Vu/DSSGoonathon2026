@@ -213,6 +213,7 @@ def run(tag="gbm", units=UNITS, sweep=SWEEP, n_random=300, n_boot=1000, k_look=5
             sels_1x = sels
         if m == 5:
             res["fairness_5x"] = {k: fairness(u, sels[k]) for k in ["ours", "city_policy"]}
+            sels_5x = sels
     # 1x extras: raw city picks (censored) and k-NN lookalikes
     is_city = u.is_city.values
     res["city_raw_1x"] = {"n": int(is_city.sum()), "households": float(u.value[is_city].sum()),
@@ -227,7 +228,8 @@ def run(tag="gbm", units=UNITS, sweep=SWEEP, n_random=300, n_boot=1000, k_look=5
     REP.mkdir(parents=True, exist_ok=True)
     tagu = f"{tag}_{units[0]}-{units[1]}"
     pd.DataFrame(rows).to_csv(REP / f"sweep_{tagu}.csv", index=False)
-    u.assign(city_score=city_score, **{f"sel_{k}_1x": v for k, v in sels_1x.items()}).to_parquet(
+    u.assign(city_score=city_score, **{f"sel_{k}_1x": v for k, v in sels_1x.items()},
+             **{f"sel_{k}_5x": v for k, v in sels_5x.items()}).to_parquet(
         D / f"backtest_universe_{tag}.parquet", index=False)
     json.dump(res, open(REP / f"backtest_{tagu}.json", "w"), indent=1, default=float)
     return res

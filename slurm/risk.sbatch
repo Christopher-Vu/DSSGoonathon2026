@@ -9,7 +9,7 @@
 # sbatch slurm/risk.sbatch [extra steps: probes|dataset]
 set -e
 R=/global/scratch/users/christophervu/dssg
-module load anaconda3 2>/dev/null || module load python 2>/dev/null || true
+module load python/3.11.6-gcc-11.4.0
 source $R/venv/bin/activate
 cd $R/repo
 for s in "$@"; do
@@ -20,3 +20,4 @@ for s in "$@"; do
 done
 python -m models.risk.train
 python -m models.risk.backtest --tag gbm
+python -m etl.displaced --tag gbm
