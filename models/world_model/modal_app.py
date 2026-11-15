@@ -79,3 +79,29 @@ def main(cutoffs: str = "2016,2018", sweep_cutoff: int = 2016, rule: str = "parc
         print("full:", r)
     export.remote(cs, lam)
     print("done: modal volume get wm-data data/processed/parcel_embeddings.parquet ...")
+
+
+@app.function(gpu="A10G", memory=32768, **KW)
+def oos_run(decision: int, c: int, lam: float):
+    vol.reload()
+    _sh("models.world_model.oos", "run", "--config", "configs/wm.yaml", "--decision", str(decision),
+        "--model-cutoff", str(c), "--lam", str(lam), "--device", "cuda")
+    return f"T={decision} c={c}"
+
+
+@app.function(cpu=2, memory=16384, **KW)
+def oos_combine(decisions: list[int]):
+    vol.reload()
+    args = [x for T in decisions for x in ("--decision", str(T))]
+    _sh("models.world_model.oos", "combine", "--config", "configs/wm.yaml", *args)
+
+
+@app.local_entrypoint()
+def oos_main(lam: float = 0.1, first: int = 2011, decisions: str = "2016,2018"):
+    """Rolling-origin out-of-time parcel features: modal run models/world_model/modal_app.py::oos_main"""
+    Ts = [int(t) for t in decisions.split(",")]
+    jobs = [(T, c, lam) for T in Ts for c in range(first, T + 1)]
+    for r in oos_run.starmap(jobs, return_exceptions=True):
+        print("oos:", r)
+    oos_combine.remote(Ts)
+    print("done: parcel_oos_embeddings.parquet")

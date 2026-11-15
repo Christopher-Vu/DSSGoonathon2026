@@ -43,3 +43,22 @@ def attach_wm(ctx, n_pca=16, use_pca=True, use_pn=True):
     assert len(r) == len(ctx.rows)
     ctx.rows = r
     return cols
+
+
+OOS = ["oos_sale", "oos_bf_ellis_omi"]
+
+
+def attach_oos(ctx):
+    """Out-of-time WM parcel head features: the year-t row comes from a model with cutoff t (rolling origin),
+    so no row's feature was fit on its own future label. pn_buyout is dropped (no buyout targets before 2015,
+    so rolling models with cutoff <= 2015 never trained that output)."""
+    e = ctx.emb("parcel_oos")
+    assert (e.cutoff == ctx.T).all() and (e.year == e.model_cutoff).all() and e.year.max() <= ctx.T
+    f = e.rename(columns={"year": "t"}).astype({"blklot": str, "t": int}).drop_duplicates(["blklot", "t"])
+    f["oos_sale"] = np.log(f.pn_sale.clip(lower=1e-6))
+    f["oos_bf_ellis_omi"] = np.log(f.pn_bf_ellis_omi.clip(lower=1e-6))
+    r = ctx.rows.drop(columns=[c for c in OOS if c in ctx.rows])
+    r = r.assign(blklot=r.blklot.astype(str)).merge(f[["blklot", "t", *OOS]], on=["blklot", "t"], how="left")
+    assert len(r) == len(ctx.rows)
+    ctx.rows = r
+    return OOS

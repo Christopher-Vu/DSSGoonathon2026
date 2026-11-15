@@ -42,7 +42,11 @@ def build_vocab(schema: dict, data_types, cfg: dict, cutoff: int) -> list[str]:
 
 
 def tokens_dir(cfg: dict, cutoff: int) -> Path:
-    return Path(cfg["paths"]["data_root"]) / "tokens" / f"cutoff={cutoff}"
+    # paths.tokens_from = T reads the cutoff=T partition and keeps years <= cutoff (rolling-origin models
+    # for out-of-time features; only standardization constants differ from a native cutoff partition)
+    src = int(cfg["paths"].get("tokens_from") or cutoff)
+    assert src >= cutoff, f"tokens_from={src} < cutoff={cutoff}"
+    return Path(cfg["paths"]["data_root"]) / "tokens" / f"cutoff={src}"
 
 
 def read_tokens(cfg: dict, cutoff: int) -> pd.DataFrame:
@@ -50,7 +54,7 @@ def read_tokens(cfg: dict, cutoff: int) -> pd.DataFrame:
     dataset = ds.dataset(str(d), format="parquet")
     have = set(dataset.schema.names)
     cols = [c for c in ["cell", "year", "token_type", "entity_id", *FEAT_COLS, "x_off", "y_off", "text_idx"] if c in have]
-    df = dataset.to_table(columns=cols).to_pandas()
+    df = dataset.to_table(columns=cols, filter=ds.field("year") <= cutoff).to_pandas()
     for c in FEAT_COLS:
         if c not in df:
             df[c] = np.float32(np.nan)
