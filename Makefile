@@ -5,7 +5,7 @@
 PY ?= python
 FINAL ?=            # set FINAL=--final to run the logged, locked test evaluations
 
-.PHONY: all data pretrain risk backtest sim site test
+.PHONY: all data pretrain risk backtest sim site deploy test
 
 all: data pretrain risk backtest sim site
 
@@ -37,7 +37,10 @@ risk:
 	$(if $(FINAL),$(PY) -m models.risk.harness --cand c_wm_oos_blend --split test --final)
 	$(if $(FINAL),$(PY) -m models.world_model.eval_final --final)
 
-backtest:
+backdeploy:  # static build -> Vercel (project linked once in web/deploy)
+	cd web && npm run build && rm -rf deploy/assets deploy/data && cp -r dist/. deploy/ && cd deploy && npx vercel deploy --prod --yes
+
+test:
 	$(PY) -m models.demo.export risk
 	$(PY) -m etl.displaced --tag wm
 
@@ -48,6 +51,9 @@ site:
 	$(PY) -m models.demo.export wm
 	$(PY) -m models.demo.export sim
 	cd web && npm ci && npm run build
+
+deploy:  # static build -> Vercel (project linked once in web/deploy)
+	cd web && npm run build && rm -rf deploy/assets deploy/data && cp -r dist/. deploy/ && cd deploy && npx vercel deploy --prod --yes
 
 test:
 	$(PY) -m pytest -q tests
