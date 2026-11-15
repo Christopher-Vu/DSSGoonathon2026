@@ -241,9 +241,17 @@ def wm():
     m16 = dict(zip(c16, rgb16.tolist()))
     cells = [{"h": c, "rgb": rgb18[i].tolist(), "rgb16": m16.get(c), "v": q[i].tolist()} for i, c in enumerate(c18)]
     probes = pd.read_csv("reports/wm/probes.csv").to_dict(orient="records")
-    final = Path("reports/wm/probes_final.json")
+    pt = Path("reports/wm/probes_test.csv")
+    final = None
+    if pt.exists():  # locked test (models.world_model.eval_final --final)
+        t = pd.read_csv(pt)
+        t = t[(t.features == "emb") & t.lift.notna()]
+        final = {"mean_lift": float(t.lift.mean()), "targets": t[["target", "lift", "lift_lo", "lift_hi"]].to_dict(orient="records")}
+        sj = Path("reports/wm/probes_test_summary.json")
+        if sj.exists():
+            final["summary"] = json.loads(sj.read_text())
     sweep = pd.read_csv("reports/wm/lambda_sweep.csv").to_dict(orient="records")
-    dump("wm", {"cells": cells, "lam": lam, "probes": probes, "probes_final": json.loads(final.read_text()) if final.exists() else None,
+    dump("wm", {"cells": cells, "lam": lam, "probes": probes, "probes_final": final,
                 "lambda_sweep": sweep, "explained_var_3": r(p18.explained_variance_ratio_[:3].sum(), 3)})
 
 
