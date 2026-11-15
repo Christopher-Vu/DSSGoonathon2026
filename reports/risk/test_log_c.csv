@@ -1,0 +1,2 @@
+score_vs_city,score_vs_heuristic,score_vs_random,beats_city_all_budgets,cand,split,T,minutes,universe_n,city_n,total_households,commit
+2.8301120004351366,0.9300418535292744,4.715811431765613,True,c_wm_oos_blend,test,2018,0.3,7744,13,1137.8905890444337,485616b

@@ -1,3 +1,5 @@
+> Superseded by `STATUS.md` at the repo root (2026-11-15).
+
 # Stream A status (handoff for the next session)
 
 **Rule:** no heavy local compute. Run everything heavier than a quick check on Savio.
