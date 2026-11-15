@@ -54,7 +54,7 @@ MONO = {"sold_2y": 1, "sold_1y": 1, "sold_3y": 1, "yrs_since_sale": -1, "bf_elli
 
 def fit_predict_twohead(ctx, h_bo=1, h_bf=2, t_bo_min=2014, t_bf_min=2011, hl_bo=0, hl_bf=2.0,
                         feats=BASE + SALE, mono=True, rounds_bo=300, rounds_bf=400, units=(3, 60), w_bf=1.0,
-                        return_parts=False):
+                        flat_tenants=False, return_parts=False):
     rows = add_feats(ctx.rows, ctx.events["sales"])
     ctx_rows, ctx.rows = ctx.rows, rows
     try:
@@ -69,8 +69,12 @@ def fit_predict_twohead(ctx, h_bo=1, h_bf=2, t_bo_min=2014, t_bf_min=2011, hl_bo
     b = lab_bo[(lab_bo.t >= t_bo_min) & lab_bo.units.between(*units)]
     mb = _train(dict(objective="binary"), b[feats], b.y_bldg, recency_w(b.t, T - h_bo, hl_bo), rounds_bo, M)
     pos = b[b.y_bldg == 1]
-    ten = (pos.y_buyout_tenants / pos.units).median() if len(pos) else 0.2   # tenants per unit given a buyout
-    v_bo = mb.predict(sc[feats]) / h_bo * np.clip(ten * sc.units.values, 1, None)
+    if flat_tenants:   # buyouts are usually 1-2 households regardless of building size
+        e_ten = pos.y_buyout_tenants.mean() if len(pos) else 1.5
+    else:
+        ten = (pos.y_buyout_tenants / pos.units).median() if len(pos) else 0.2   # tenants per unit given a buyout
+        e_ten = np.clip(ten * sc.units.values, 1, None)
+    v_bo = mb.predict(sc[feats]) / h_bo * e_ten
 
     # block-face head: Poisson on notices on the block-face, apportioned by unit share
     f = lab_bf[(lab_bf.t >= t_bf_min) & lab_bf.units.between(*units)]
@@ -79,3 +83,24 @@ def fit_predict_twohead(ctx, h_bo=1, h_bf=2, t_bo_min=2014, t_bf_min=2011, hl_bo
 
     v = v_bo + w_bf * v_bf
     return (v, v_bo, v_bf) if return_parts else v
+
+
+def heuristic_raw(df):
+    return (df.yrs_since_sale <= 2) * 10 + df.bf_ellis_omi_3y.clip(0, 5)
+
+
+def calibrated_heuristic(ctx, h=1, t_min=2014, prior=20):
+    """The rule of thumb's 12 cells (sold_2y x clipped bf notices), each mapped to mean households/yr on recent
+    windows, shrunk toward the overall mean. A learned version of the hand-weighted rule."""
+    lab = ctx.labels(h)
+    lab = lab[lab.t >= t_min]
+    key = heuristic_raw(lab)
+    g = lab.groupby(key).y_val.agg(["sum", "count"])
+    mu = lab.y_val.mean()
+    rate = (g["sum"] + prior * mu) / (g["count"] + prior) / h
+    return heuristic_raw(ctx.score).map(rate).fillna(mu / h).values
+
+
+def blend(ctx, lam=0.5, **kw):
+    """lam * model + (1 - lam) * calibrated heuristic, both in households/yr."""
+    return lam * fit_predict_twohead(ctx, **kw) + (1 - lam) * calibrated_heuristic(ctx)
