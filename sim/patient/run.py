@@ -131,7 +131,7 @@ def run(households: Path, cfg: dict) -> tuple[pd.DataFrame, dict]:
     if rc["backend"] == "r5":
         gtfs = sorted(p(cfg, "gtfs_dir").glob("*.zip"))
         router = access.R5Router(p(cfg, "osm_pbf"), gtfs, rc)
-    tab = access.access_table(needs, pois, rc, router)
+    tab = access.access_table(needs, pois, rc, router, cache_dir=p(cfg, "interim"))
     tab.to_parquet(p(cfg, "interim") / "access_cells.parquet", index=False)
 
     sim = attach_times(sim, tab, float(rc["max_minutes"]))
