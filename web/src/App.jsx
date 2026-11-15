@@ -338,7 +338,7 @@ function Step({ id, refEl, children, cls = "" }) {
 
 function Hero({ refEl, h, sim, wm }) {
   const x = useCountUp(h.vs_city, 1800);
-  const sh = sim?.summary?.headline?.realized_2019_2024;
+  const sh = sim?.scenarios?.realized_2019_2024?.delta?.clinic;
   const lift = wm?.probes_final?.mean_lift ?? meanLift(wm?.probes);
   return (
     <Step id="hero" refEl={refEl} cls="hero">
@@ -353,7 +353,7 @@ function Hero({ refEl, h, sim, wm }) {
         <div className="stat"><b>{fmt(h.vs_random, 1)}×</b><span>vs. random buildings at the same budget</span></div>
         {lift != null && <div className="stat"><b>+{fmt(lift, 2)}</b><span>world-model lift over hand-made features (probe R²/PR-AUC)</span></div>}
         {h.metrics?.capture_top10pct && <div className="stat"><b>{fmt(h.metrics.capture_top10pct.model * 100, 0)}%</b><span>of 2019–24 displaced households were in the model's top 10% of buildings</span></div>}
-        {sh && <div className="stat"><b>+{fmt(sh.median_delta_clinic ?? sh.median_delta_min ?? sh.median_delta, 1)} min</b><span>median extra travel to care after displacement</span></div>}
+        {sh && <div className="stat"><b>{sh.median_delta >= 0 ? "+" : ""}{fmt(sh.median_delta, 1)} min</b><span>median change in travel to the nearest clinic after displacement; {fmt(sh.pct_lose_30, 0)}% lose 30-minute access</span></div>}
       </div>
       <p className="scroll-hint">Scroll to explore · press <b>P</b> for the guided tour</p>
     </Step>
@@ -526,7 +526,7 @@ function Sim({ refEl, sim, scen, setScen, cls, setCls }) {
           <div className="persona" key={i}><b>Age {p.age_band}, {p.has_car ? "has a car" : "no car"}</b><br />{p.lang} speaker · income {p.income_band}
             <br />clinic: {p.clinic_before} → <b>{p.clinic_after} min</b></div>))}</div>
       </>}
-      <p className="small" style={{ marginTop: 8 }}>Covers all 2019–24 displacement events citywide, not only buildings in the budget universe. Within-SF moves are excluded, so this covers households that left the city. Migration model held-out JSD {fmt(sim.summary?.migration_validation?.jsd ?? sim.summary?.migration_validation?.model_jsd, 2)}.</p>
+      <p className="small" style={{ marginTop: 8 }}>Covers all 2019–24 displacement events citywide, not only buildings in the budget universe. Within-SF moves are excluded, so this covers households that left the city. Migration model held-out JSD {fmt(sim.summary?.migration_validation?.jsd_model, 2)} (population-proportional baseline {fmt(sim.summary?.migration_validation?.jsd_population_prop, 2)}).</p>
     </Step>
   );
 }
