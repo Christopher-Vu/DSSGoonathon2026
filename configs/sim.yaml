@@ -1,0 +1,54 @@
+# Patient sim config (stream B). Paths are relative to data_root unless absolute.
+# data_root can be overridden with env SIM_DATA_ROOT (e.g. the main checkout's data/ from a worktree).
+data_root: data
+seed: 20261114
+min_households_per_scenario: 10000   # scenarios with fewer rows get syn_<n> resamples (by weight)
+
+paths:
+  pums_households: raw/sim/pums/csv_hca.zip
+  pums_persons: raw/sim/pums/csv_pca.zip
+  puma_shapes: raw/sim/tiger/tl_2020_06_puma20.zip
+  blocks: raw/sim/tiger/tl_2020_06_tabblock20.zip
+  osm_pbf: raw/sim/osm/region.osm.pbf          # clipped by etl/sim/clip_osm.py
+  gtfs_dir: raw/sim/gtfs                         # every *.zip here is loaded
+  places_csv: raw/sponsor/google_maps.csv
+  osm_pois: processed/sim/pois_osm.parquet
+  places_pois: processed/sim/pois_places.parquet
+  interim: processed/sim
+  out_results: processed/sim_results.parquet
+  out_summary: processed/sim_summary.json
+  reports: reports/sim                           # relative to repo root
+
+# PUMA vintage: verified the 2019-2023 5-yr codes ALL years in 2020 PUMAs/MIGPUMAs (see etl/sim/README.md), so all 5 years are used.
+pums:
+  survey_years: [2019, 2020, 2021, 2022, 2023]
+  holdout_year: 2023            # validation: fit on 2019-2022, score on 2023
+  renters_only: true            # personas and movers matched on TEN == 3 (rented)
+
+migration:
+  # destinations limited to the routable region; share leaving it is reported
+  region_counties: ["001", "013", "041", "055", "075", "081", "085", "095", "097", "067", "077"]  # 9 Bay Area + Sacramento + San Joaquin
+  include_within_sf: false      # spec: current PUMA outside SF
+  smoothing_alpha: 20.0         # pseudo-count mass toward the income-band marginal
+
+pois:
+  source: auto                  # auto = places if available else osm; or "places" / "osm"
+  default_hours:                # used when open_hours missing/unparseable (weekday)
+    clinic: [9, 17]
+    pharmacy: [9, 21]
+    grocery: [8, 22]
+
+routing:
+  backend: r5                   # r5 | euclid (straight-line speed model for tests / no Java)
+  java_home: null               # else env JAVA_HOME
+  date: "2026-11-17"            # a Tuesday inside the GTFS service window (checked at run time)
+  max_minutes: 120
+  departure_window_min: 10
+  origin_chunk: 400
+  euclid_speeds_kmh: {transit_walk: 12.0, car: 35.0}   # euclid backend only
+  detour_factor: 1.3
+
+personas:
+  working_age: [18, 64]         # depart weekday 18:00, else 10:00
+  age_bands: [[0, 24, "18-24"], [25, 44, "25-44"], [45, 64, "45-64"], [65, 200, "65+"]]
+  income_bands: [[-1.0e9, 35000, "<35k"], [35000, 75000, "35-75k"], [75000, 150000, "75-150k"], [150000, 1.0e12, "150k+"]]
