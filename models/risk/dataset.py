@@ -78,6 +78,9 @@ def build(snapshots=SNAPSHOTS):
         fb = bo[(bo.year > t) & (bo.year <= t + H)]
         fe = ev[ev.ellis_omi & (ev.year > t) & (ev.year <= t + H)]
         s["y_bldg"] = s.blklot.isin(set(fb.blklot)).astype("int8")
+        # realized households (the optimizer objective): buyout tenants + unit-share of block-face notices
+        s["y_val"] = (s.blklot.map(fb.groupby("blklot").tenants_share.sum()).fillna(0)
+                      + s.bf_share.fillna(0) * s.bf.map(fe.groupby("bf").size()).fillna(0)).astype("float32")
         s["y_bf"] = s.bf.isin(set(fe.bf)).astype("int8")
         s["label_end"] = t + H
         rows.append(s)
@@ -91,7 +94,7 @@ def build(snapshots=SNAPSHOTS):
             "n_sales_10y", "log_last_jump", "sold_2y", "log_assessed_per_unit", "assessed", "bf_share", "bf_rc_units",
             "bf_ellis_omi_3y", "bf_ellis_omi_10y", "bf_other_evict_3y", "bf_buyout_3y", "bldg_buyout_3y",
             "permits_3y", "remodel_3y", "unit_removal_10y", "log_permit_cost_3y", "cell_sales_3y",
-            "y_bldg", "y_bf", "label_end"]
+            "y_bldg", "y_bf", "y_val", "label_end"]
     d = d[keep]
     OUT.mkdir(parents=True, exist_ok=True)
     d.to_parquet(OUT / "risk_dataset.parquet", index=False)
@@ -100,4 +103,4 @@ def build(snapshots=SNAPSHOTS):
 
 if __name__ == "__main__":
     d = build()
-    print(d.groupby("t")[["y_bldg", "y_bf"]].mean().round(3).assign(n=d.groupby("t").size()))
+    print(d.groupby("t")[["y_bldg", "y_bf", "y_val"]].mean().round(3).assign(n=d.groupby("t").size()))
