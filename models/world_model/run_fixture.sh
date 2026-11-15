@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# DO NOT run on a laptop: launches 6 parallel training runs. Run on a Savio node (or an sbatch job).
 # End-to-end fixture run on CPU (~10 min): fixture -> λ sweep -> select -> full pretrain x2 -> export -> final eval.
 set -euo pipefail
 CFG=configs/wm_fixture.yaml
