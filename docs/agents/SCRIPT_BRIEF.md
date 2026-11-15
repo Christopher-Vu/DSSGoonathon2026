@@ -17,7 +17,7 @@ Goal: a word-for-word voice-over script and shot list for the ≤5-min submissio
 - No rule-of-thumb comparison anywhere. Comparisons are model vs. city pattern vs. random only.
 - Hexagons only; never name or show buildings or addresses.
 - Don't overstate weaknesses, don't hunt for failures; keep the real ones as stated on the site (futures over-forecast citywide; backtest CI at 1× includes 0 — only 0.5×, 1.5×, 2× exclude it).
-- Patient sim numbers (median Δ minutes to clinic, % losing 30-min access, breakdowns) are **pending** — leave as placeholders; that beat gets recorded separately later.
+- Patient sim numbers are final (STATUS.md, `web/public/data/sim.json`, household-weighted). Use those, not the unweighted per-row counts.
 - Every number in the script must trace to a file above. Cite the file next to each number in the draft.
 
 ## Deliverable

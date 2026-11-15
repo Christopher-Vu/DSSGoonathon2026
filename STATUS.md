@@ -10,7 +10,7 @@ This is the one doc for whoever picks the project up. The pitch and plan are in 
 | World-model probe lift over hand-made features | **done, locked test** (`eval_final --final`, run once) | mean **+0.10** over 7 cell targets, 95% CI [0.001, 0.19] (validation was +0.12) | `reports/wm/probes_test.csv`, `probes_test_summary.json` |
 | UMAP→RGB map of SF | done | `reports/wm/umap_rgb_map.png` / `.html` (2018), `_2016` (dev). Rendered with PCA; umap-learn wasn't in the Modal image. | |
 | Risk-model PR-AUC / precision@k | **done, test** (frozen `c_wm_oos_blend`) | buyout at building: PR-AUC **0.094** vs city pattern 0.070, base 0.061. Any displacement: 0.176 vs 0.165, base 0.148; prec@100 0.29 vs 0.23. Top 10% of buildings hold **21%** of displaced households (city pattern 16%) | `web/public/data/headline.json` (Savio `$S/repo-final`) |
-| Patient sim: Δ minutes to care, % losing 30-min access | **not done** (r5 run in flight, see below) | — | |
+| Patient sim: Δ minutes to care, % losing 30-min access | **done**: +3.0 min median to nearest clinic, 12.1% lose 30-min access (no car: +13 min, 30.8%) | realized 2019–24, household-weighted | job 41339499 |
 
 ### The candidate to show: `c_wm_oos_blend`
 - **What it is:** 0.5 × two-head LightGBM on out-of-time world-model parcel features + 0.5 × calibrated rule of thumb.
@@ -73,12 +73,11 @@ This is the one doc for whoever picks the project up. The pitch and plan are in 
 **Patient sim** (`sim/patient/`, `etl/sim/`)
 - **Pipeline:** PUMS personas → migration model → r5 access to the nearest open clinic, pharmacy and grocery.
 - **Migration model:** held-out JSD 0.25, vs 0.42 for the population-proportional baseline.
-- **In flight:** Savio job **41328444** (`$S/repo-b`, log `$S/logs/patient_sim_41328444.log`, 6 h limit).
-  - Transit is finished.
-  - Car routing runs at about 31 min per 400 of 17,128 origins, which is about 22 h, so **it will time out**.
-- **Fix before rerunning:**
-  - Cap car routing: limit the search radius or max time, or reuse transit origins with a small car POI set, or approximate car times with OSRM.
-  - Or submit car as its own array job.
+- **Done:** Savio job **41339499** (`$S/repo-final`, 4h55m; car capped at 45 min, 12 nearest POIs per class). Realized 2019–24 displacements, household-weighted:
+  - clinic +3.0 min median, 12.1% lose 30-min access; pharmacy +3.0, 11.4%; grocery +2.0, 5.5%.
+  - no car +13 min / 30.8%; has car +2 / 0.3%; income <$35k +5 / 17.1%; age 18–24 +4 / 19.1%.
+  - Router check (10 transit pairs vs. reference): median error +0.7 min, MAE 1.0 min.
+  - Unprotected scenarios (picks bought out) barely move the numbers, since 1× picks remove ~10 of 11,803 household weight; the site shows realized only.
 
 **Data / ETL** (`etl/`)
 - Done: spine, sales, labels, tokens for cutoffs 2016, 2018 and 2025 (public only), `probe_targets`, `risk_dataset` and `displaced_households`.
@@ -91,16 +90,9 @@ This is the one doc for whoever picks the project up. The pitch and plan are in 
 - **Not shown (user rule):** LightGBM without the world model scores higher PR-AUC on "any displacement" (0.190); ours is higher on building buyouts and top-10% capture.
 - Video/deck plan: `docs/VIDEO_PLAN.md`. Reproducibility: `Makefile`.
 
-## What's left (priority order)
-1. **Patient sim numbers.** Fix the car-routing cost and rerun on Savio, then run the hand-check of 20 transit pairs.
-2. **Demo / figures:**
-   - budget-sweep curve (1×–20× city budget) for `c_wm_oos_blend` vs city and random;
-   - the "frozen in 2018" top-risk map;
-   - the budget slider app;
-   - the λ-sweep plot and UMAP map, which are already in `reports/wm/`.
-3. **Fairness table** for `c_wm_oos_blend` picks: supervisor district, size band, ACS tercile. The ACS targets need the Census key.
-4. **Optional, ask the user first:** the world model's locked probe test (`eval_final --final`), and risk PR-AUC / precision@k.
-5. **Deck + ≤5 min video** following PRD §1. Stretch: Loophole Finder.
+## What's left
+1. Video script + recording (brief: `docs/agents/SCRIPT_BRIEF.md`) and the deck.
+2. Push `a-final`, PR to main.
 
 ## Honest caveats to keep
 - **Dev is small:** 23 city picks, and the CIs at high budgets include 0.

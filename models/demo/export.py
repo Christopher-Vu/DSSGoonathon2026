@@ -327,6 +327,11 @@ def wm():
 
 
 # ------------------------------------------------------------------ patient sim
+def wmedian(x, w):
+    o = np.argsort(x); x, w = np.asarray(x)[o], np.asarray(w)[o]
+    return float(x[np.searchsorted(np.cumsum(w), 0.5 * w.sum())])
+
+
 def sim():
     s = pd.read_parquet(D / "sim_results.parquet")
     summ = json.loads((D / "sim_summary.json").read_text())
@@ -340,18 +345,18 @@ def sim():
     for sc_name, g in s.groupby("scenario"):
         cap = 120.0
         dd = {}
+        def stats(v, c):
+            w = v["weight"].to_numpy(float)
+            d = (v[f"t_{c}_after"].clip(upper=cap) - v[f"t_{c}_before"].clip(upper=cap)).to_numpy()
+            lose = (v[f"acc30_{c}_before"] & ~v[f"acc30_{c}_after"]).to_numpy()
+            return d, w, {"median_delta": r(wmedian(d, w), 1), "mean_delta": r(np.average(d, weights=w), 1),
+                          "pct_lose_30": r(100 * w[lose].sum() / w.sum(), 1), "n": int(len(v))}
         for c in cls:
-            b = g[f"t_{c}_before"].clip(upper=cap)
-            a = g[f"t_{c}_after"].clip(upper=cap)
-            d = (a - b).to_numpy()
-            hist, edges = np.histogram(np.clip(d, -30, 90), bins=np.arange(-30, 92, 4))
-            lose = (g[f"acc30_{c}_before"] & ~g[f"acc30_{c}_after"])
-            dd[c] = {"median_delta": r(np.median(d), 1), "mean_delta": r(d.mean(), 1),
-                     "pct_lose_30": r(lose.mean() * 100, 1), "hist": hist.tolist(), "edges": edges.tolist()}
+            d, w, st = stats(g, c)
+            hist, edges = np.histogram(np.clip(d, -30, 90), bins=np.arange(-30, 92, 4), weights=w)
+            dd[c] = {**st, "hist": [r(x, 1) for x in hist], "edges": edges.tolist()}
             for grp in ("has_car", "lang", "age_band", "income_band", "disability"):
-                dd[c].setdefault("by", {})[grp] = {str(k): {"median_delta": r(np.median((v[f"t_{c}_after"].clip(upper=cap) - v[f"t_{c}_before"].clip(upper=cap))), 1),
-                                                         "pct_lose_30": r((v[f"acc30_{c}_before"] & ~v[f"acc30_{c}_after"]).mean() * 100, 1),
-                                                         "n": int(len(v))} for k, v in g.groupby(grp)}
+                dd[c].setdefault("by", {})[grp] = {str(k): stats(v, c)[2] for k, v in g.groupby(grp)}
         fl = g.groupby(["o7", "d7"]).size().reset_index(name="n")
         fl = fl[fl.n >= 3]
         scen[sc_name] = {"n": int(len(g)), "delta": dd,
