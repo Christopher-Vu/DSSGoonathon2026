@@ -24,6 +24,11 @@ const VIEWS = {
   sim: { longitude: -122.15, latitude: 37.75, zoom: 8.9, pitch: 42, bearing: 8 },
   honesty: { ...SF, zoom: 11.6, pitch: 0, bearing: 0 },
 };
+// on wide screens the story panel covers the left ~40%: shift the camera so the city sits in the open area
+const framed = (v) => {
+  if (typeof window === "undefined" || window.innerWidth <= 720) return v;
+  return { ...v, longitude: v.longitude - (0.2 * window.innerWidth * 360) / (512 * 2 ** v.zoom) };
+};
 const SECTIONS = ["hero", "wm", "frozen", "budget", "futures", "sim", "honesty"];
 const FILES = ["headline", "sweep", "fairness", "futures", "risk_map", "wm", "sim"];
 
@@ -41,7 +46,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export default function App() {
   const d = useData();
   const [active, setActive] = useState("hero");
-  const [view, setView] = useState({ ...VIEWS.hero });
+  const [view, setView] = useState(framed(VIEWS.hero));
   const [mult, setMult] = useState(1);
   const [year, setYear] = useState(2018);
   const [playing, setPlaying] = useState(false);
@@ -64,7 +69,7 @@ export default function App() {
     return () => io.disconnect();
   }, [d.headline]);
   useEffect(() => {
-    setView((v) => ({ ...VIEWS[active], transitionDuration: 2200, transitionInterpolator: new FlyToInterpolator({ speed: 1.4 }) }));
+    setView((v) => ({ ...framed(VIEWS[active]), transitionDuration: 2200, transitionInterpolator: new FlyToInterpolator({ speed: 1.4 }) }));
   }, [active]);
   // hero: slow orbit
   useEffect(() => {
@@ -296,7 +301,7 @@ export default function App() {
         <Budget refEl={reg("budget")} sw={d.sweep} row={sweepRow} mult={mult} setMult={setMult} h={h} />
         <Futures refEl={reg("futures")} fu={d.futures} sel={futSel} setSel={setFutSel} futHex={futHex} />
         <Sim refEl={reg("sim")} sim={d.sim} scen={scen} setScen={setScen} cls={cls} setCls={setCls} />
-        <Honesty refEl={reg("honesty")} fair={d.fairness} h={h} />
+        <Honesty refEl={reg("honesty")} fair={d.fairness} h={h} sw={d.sweep} />
       </main>
     </>
   );
@@ -347,7 +352,7 @@ function Hero({ refEl, h, sim, wm }) {
       <div className="stats">
         <div className="stat"><b>{fmt(h.vs_random, 1)}×</b><span>vs. random buildings at the same budget</span></div>
         {lift != null && <div className="stat"><b>+{fmt(lift, 2)}</b><span>world-model lift over hand-made features (probe R²/PR-AUC)</span></div>}
-        {h.metrics?.any_displacement && <div className="stat"><b>{fmt(h.metrics.any_displacement.model.pr_auc, 2)}</b><span>PR-AUC, any displacement 2019–24 (base rate {fmt(h.metrics.any_displacement.prevalence * 100, 0)}%)</span></div>}
+        {h.metrics?.capture_top10pct && <div className="stat"><b>{fmt(h.metrics.capture_top10pct.model * 100, 0)}%</b><span>of 2019–24 displaced households were in the model's top 10% of buildings</span></div>}
         {sh && <div className="stat"><b>+{fmt(sh.median_delta_clinic ?? sh.median_delta_min ?? sh.median_delta, 1)} min</b><span>median extra travel to care after displacement</span></div>}
       </div>
       <p className="scroll-hint">Scroll to explore · press <b>P</b> for the guided tour</p>
@@ -380,11 +385,11 @@ function WM({ refEl, wm, sel, setSel, wm16, setWm16 }) {
       <p className="small">Click any hexagon: everything the model thinks is alike lights up and rises.</p>
       <p style={{ marginTop: 14, marginBottom: 4, color: "var(--ink)" }}>The embeddings predict real outcomes better than hand-made features</p>
       <Bars rows={rows} vfmt={(v) => (v >= 0 ? "+" : "") + fmt(v, 2)} />
-      <p className="small">Lift in R² / PR-AUC from a linear probe on embeddings vs. on hand-made features, with 95% CI{pf ? ", on the locked spatial test split" : ", validation split"}.</p>
+      <p className="small">Lift in R² (PR-AUC for the binary target) from a linear probe on the embeddings over the same probe on hand-made features, with 95% CI{pf ? `, on held-out neighborhoods (locked test, run once). Mean lift +${fmt(pf.mean_lift, 2)}` : ", validation split"}.</p>
       {ls && <>
         <p style={{ marginTop: 14, marginBottom: 4, color: "var(--ink)" }}>Adding next-year prediction to training helps</p>
-        <LineChart xs={ls.map((r) => r.lam)} xfmt={(x) => `λ=${x}`} yfmt={(y) => fmt(y, 2)} h={150}
-          series={[{ key: "l", label: "probe lift", color: "var(--model)", values: ls.map((r) => r.mean_lift_both ?? r.mean_lift_emb) }]} cursor={wm.lam} />
+        <LineChart xs={ls.map((r) => r.lam)} xfmt={(x) => `${x}`} xlabel="λ" yfmt={(y) => fmt(y, 2)} h={150}
+          series={[{ key: "l", label: "probe lift", color: "var(--model)", values: ls.map((r) => r.mean_lift_emb) }]} cursor={wm.lam} />
         <p className="small">λ weights the next-year loss. λ = {wm.lam} was chosen on the 2016 model only, before any test data was read.</p>
       </>}
     </Step>
@@ -412,14 +417,15 @@ function Frozen({ refEl, h, rm, year, setYear, playing, setPlaying }) {
       {rm && <p><b style={{ color: "var(--ink)" }}>{fmt(rm.top_decile_share * 100, 0)}%</b> of 2019–24 Ellis, owner move-in and buyout cases landed in the model's top 10% of hexagons.</p>}
       {m && <>
         <table style={{ marginTop: 8 }}>
-          <thead><tr><th>Test 2019–24</th><th>PR-AUC</th><th>prec@100</th><th>top-10% capture</th></tr></thead>
+          <thead><tr><th>Test, 2019–24</th><th>World model</th><th>City's selection pattern</th><th>Base rate</th></tr></thead>
           <tbody>
-            <tr><td>World model</td><td>{fmt(m.any_displacement.model.pr_auc, 3)}</td><td>{fmt(m.any_displacement.model["p@100"], 2)}</td><td>{fmt(m.capture_top10pct.model * 100, 0)}%</td></tr>
-            <tr><td>City's selection pattern</td><td>{fmt(m.any_displacement.city_policy.pr_auc, 3)}</td><td>{fmt(m.any_displacement.city_policy["p@100"], 2)}</td><td>{fmt(m.capture_top10pct.city_policy * 100, 0)}%</td></tr>
-            <tr><td>Base rate</td><td>{fmt(m.any_displacement.prevalence, 3)}</td><td>{fmt(m.any_displacement.prevalence, 2)}</td><td>10%</td></tr>
+            <tr><td>PR-AUC: buyout at the building</td><td>{fmt(m.building_buyout.model.pr_auc, 3)}</td><td>{fmt(m.building_buyout.city_policy.pr_auc, 3)}</td><td>{fmt(m.building_buyout.prevalence, 3)}</td></tr>
+            <tr><td>PR-AUC: any displacement</td><td>{fmt(m.any_displacement.model.pr_auc, 3)}</td><td>{fmt(m.any_displacement.city_policy.pr_auc, 3)}</td><td>{fmt(m.any_displacement.prevalence, 3)}</td></tr>
+            <tr><td>Precision@100: any displacement</td><td>{fmt(m.any_displacement.model["p@100"], 2)}</td><td>{fmt(m.any_displacement.city_policy["p@100"], 2)}</td><td>{fmt(m.any_displacement.prevalence, 2)}</td></tr>
+            <tr><td>Households in top 10% of buildings</td><td>{fmt(m.capture_top10pct.model * 100, 0)}%</td><td>{fmt(m.capture_top10pct.city_policy * 100, 0)}%</td><td>10%</td></tr>
           </tbody>
         </table>
-        <p className="small">5–25-unit rent-controlled buildings (n = {h.universe_n.toLocaleString()}). Outcome: any buyout or block-face Ellis/owner move-in, 2019–24. Capture = share of displaced households in the top-ranked 10% of buildings.</p>
+        <p className="small">All {h.universe_n.toLocaleString()} 5–25-unit rent-controlled buildings, ranked from 2018 data. "Any displacement" = a buyout at the building or an Ellis/owner move-in notice on its block-face, 2019–24. Scored once, by a frozen model.</p>
       </>}
     </Step>
   );
@@ -428,7 +434,7 @@ function Frozen({ refEl, h, rm, year, setYear, playing, setPlaying }) {
 function Budget({ refEl, sw, row, mult, setMult, h }) {
   const m = useCountUp(row?.model), c = useCountUp(row?.city_policy), r = useCountUp(row?.random);
   if (!sw || !row) return <Step id="budget" refEl={refEl}><h2>The budget</h2></Step>;
-  const rows = sw.rows;
+  const rows = sw.rows.filter((x) => x.mult <= 5);
   const B = (row.budget_usd / 1e6);
   return (
     <Step id="budget" refEl={refEl}>
@@ -436,7 +442,7 @@ function Budget({ refEl, sw, row, mult, setMult, h }) {
       <h2>Drag the budget</h2>
       <p>At the end of 2018, with the money the city actually spent on Small Sites acquisitions in 2019–23 (1× = ${fmt(h.budget_1x_usd / 1e6, 1)}M
         in this building universe), which buildings would you buy? Scored by households displaced from them in 2019–24.</p>
-      <div className="row"><input type="range" min={0.5} max={20} step={0.5} value={mult} onChange={(e) => setMult(+e.target.value)} />
+      <div className="row"><input type="range" min={0.5} max={5} step={0.5} value={mult} onChange={(e) => setMult(+e.target.value)} />
       </div>
       <div className="row" style={{ justifyContent: "space-between" }}><b>{fmt(row.mult, 1)}× budget</b><span className="small">${fmt(B, 0)}M · model buys {row.model_n} buildings</span></div>
       <div className="counters">
@@ -444,8 +450,8 @@ function Budget({ refEl, sw, row, mult, setMult, h }) {
         <div className="counter" style={{ "--c": "var(--city)" }}><b>{fmt(c, 1)}</b><span>City's selection pattern</span><i>CI {fmt(row.city_policy_ci[0], 0)}–{fmt(row.city_policy_ci[1], 0)}</i></div>
         <div className="counter" style={{ "--c": "var(--random)" }}><b>{fmt(r, 1)}</b><span>Random</span><i>p5–p95 {fmt(row.random_p5, 0)}–{fmt(row.random_p95, 0)}</i></div>
       </div>
-      <p className="small">Households protected (2019–24). CIs: block-face cluster bootstrap with the picks fixed.</p>
-      <LineChart xs={rows.map((x) => x.mult)} xfmt={(x) => `${x}×`} cursor={row.mult} logx h={180}
+      <p className="small">Households protected (2019–24). CIs: block-face cluster bootstrap with the picks fixed. 1–5× is the pre-registered range; the full sweep to 20× is in the repo.</p>
+      <LineChart xs={rows.map((x) => x.mult)} xfmt={(x) => `${x}×`} cursor={row.mult} h={180}
         series={[
           { key: "m", label: "World model", color: "var(--model)", values: rows.map((x) => x.model), band: rows.map((x) => x.model_ci) },
           { key: "c", label: "City pattern", color: "var(--city)", values: rows.map((x) => x.city_policy) },
@@ -470,7 +476,11 @@ function Futures({ refEl, fu, sel, setSel, futHex }) {
       <Fan fan={f} years={fu.years} progress={prog} />
       <div className="row">{sel && <button className="pill" onClick={() => setSel(null)}>Back to whole city</button>}
         <span className="small">Click a hexagon on the map to see its fan.</span></div>
-      <p className="small" style={{ marginTop: 8 }}>Across {fu.n_hex} neighborhoods, the actual 2019–24 total fell inside the model's 80% band in {fmt(fu.coverage_80 * 100, 0)}% of them.</p>
+      <p className="small" style={{ marginTop: 8 }}>Neighborhood by neighborhood, the actual 2019–24 total fell inside the model's 80% band in {fmt(fu.coverage_80 * 100, 0)}% of {fu.n_hex} hexagons
+        (the band's width was set on the 2016 model, before any test data was read).</p>
+      {!sel && <p className="small"><b style={{ color: "var(--ink)" }}>Where it missed:</b> citywide, the model expected a steady rate. Actual displacement fell every year,
+        from {fmt(f.realized[0], 0)} households in 2019 to {fmt(f.realized[5] - f.realized[4], 0)} in 2024, through the COVID eviction moratoria and a slowdown in buyouts, which no model frozen in 2018 could see.
+        It got the <i>where</i> right more than the <i>how much</i>, which is what a purchase decision needs.</p>}
     </Step>
   );
 }
@@ -485,11 +495,9 @@ function scenLabel(s) {
 
 function Sim({ refEl, sim, scen, setScen, cls, setCls }) {
   if (!sim) return <Step id="sim" refEl={refEl}><p className="kicker">5 · What eviction costs</p><h2>Patient simulation</h2><p>Results loading…</p></Step>;
-  const sc = sim.scenarios[scen] || Object.values(sim.scenarios)[0];
+  const sc = sim.scenarios.realized_2019_2024 || Object.values(sim.scenarios)[0];
   const dd = sc.delta[cls];
   const real = sim.scenarios.realized_2019_2024;
-  const ours = sim.scenarios.unprotected__ours_1x;
-  const opts = Object.keys(sim.scenarios).filter((k) => k === "realized_2019_2024" || /unprotected__(ours|city_policy)_/.test(k));
   return (
     <Step id="sim" refEl={refEl}>
       <p className="kicker">5 · What eviction costs</p>
@@ -512,22 +520,20 @@ function Sim({ refEl, sim, scen, setScen, cls, setCls }) {
             <tr key={g + k}><td>{g === "has_car" ? (k === "True" ? "has a car" : "no car") : g === "lang" ? `speaks ${k}` : `age ${k}`}</td><td>{fmt(v.median_delta, 1)}</td><td>{fmt(v.pct_lose_30, 1)}%</td></tr>)))}
         </tbody>
       </table>
-      <div className="row" style={{ margin: "10px 0" }}>
-        <select className="pill" value={scen} onChange={(e) => setScen(e.target.value)}>{opts.map((k) => <option key={k} value={k}>{scenLabel(k)}</option>)}</select>
-      </div>
-      {ours && <p className="small">Protecting the model's 1× picks would have spared {fmt((real.n - ours.n) / real.n * 100, 1)}% of simulated displaced households.</p>}
       {sim.personas?.length > 0 && <>
         <p style={{ color: "var(--ink)", marginBottom: 6 }}>Synthetic households (Census microdata, not real people)</p>
         <div className="grid2">{sim.personas.slice(0, 4).map((p, i) => (
           <div className="persona" key={i}><b>Age {p.age_band}, {p.has_car ? "has a car" : "no car"}</b><br />{p.lang} speaker · income {p.income_band}
             <br />clinic: {p.clinic_before} → <b>{p.clinic_after} min</b></div>))}</div>
       </>}
-      <p className="small" style={{ marginTop: 8 }}>Within-SF moves are excluded, so this covers households that left the city. Migration model held-out JSD {fmt(sim.summary?.migration_validation?.jsd ?? sim.summary?.migration_validation?.model_jsd, 2)}.</p>
+      <p className="small" style={{ marginTop: 8 }}>Covers all 2019–24 displacement events citywide, not only buildings in the budget universe. Within-SF moves are excluded, so this covers households that left the city. Migration model held-out JSD {fmt(sim.summary?.migration_validation?.jsd ?? sim.summary?.migration_validation?.model_jsd, 2)}.</p>
     </Step>
   );
 }
 
-function Honesty({ refEl, fair, h }) {
+function Honesty({ refEl, fair, h, sw }) {
+  const at = (m) => sw?.rows.find((r) => r.mult === m);
+  const sig = sw ? sw.rows.filter((r) => r.mult >= 1 && r.mult <= 5 && Number.isInteger(r.mult) && r.diff_ci[0] > 0).map((r) => `${r.mult}×`) : [];
   const [dim, setDim] = useState("income_tercile");
   const f1 = fair?.model_1x?.[dim], c1 = fair?.city_policy_1x?.[dim];
   const f5 = fair?.model_5x?.[dim];
@@ -543,7 +549,8 @@ function Honesty({ refEl, fair, h }) {
       {f1 && <table>
         <thead><tr><th>{dim.replace(/_/g, " ")}</th><th>share of displacement</th><th>model protected 1×</th><th>5×</th><th>city pattern 1×</th></tr></thead>
         <tbody>{keys.map((k) => (
-          <tr key={k}><td>{k}</td><td>{pct(f1[k]?.share_displacement)}</td><td>{pct(f1[k]?.share_protected)}</td><td>{pct(f5?.[k]?.share_protected)}</td><td>{pct(c1?.[k]?.share_protected)}</td></tr>))}</tbody>
+          <tr key={k}><td>{k}</td><td>{pct(f1[k]?.share_displacement)}</td><td>{pct(f1[k]?.share_protected)}</td><td>{pct(f5?.[k]?.share_protected)}</td><td>{pct(c1?.[k]?.share_protected)}</td></tr>))}
+          {sw && <tr><td><i>households protected</i></td><td></td><td>{fmt(at(1)?.model, 1)}</td><td>{fmt(at(5)?.model, 1)}</td><td>{fmt(at(1)?.city_policy, 1)}</td></tr>}</tbody>
       </table>}
       <p className="small">Share of all households protected that fall in each group, next to that group's share of actual displacement.</p>
       <p style={{ marginTop: 12 }}><b style={{ color: "var(--ink)" }}>Ethics.</b> A building-level risk list is also a shopping list for speculators.
@@ -552,7 +559,7 @@ function Honesty({ refEl, fair, h }) {
       <p><b style={{ color: "var(--ink)" }}>Caveats.</b> A purchase is assumed to prevent all later Ellis, owner move-in and buyout displacement in the building (the same upper bound for every strategy).
         Notices are reported per block-face and shared across its buildings by unit count. Reported notices miss informal displacement.
         The city buys for more than prevention (often buildings already in trouble), so its pattern is not a prevention-only strategy.
-        At 3× and 5× the confidence interval on the difference includes zero.</p>
+        Over a single six-year window, the bootstrap interval on the model-minus-city difference excludes zero at {sig.length ? sig.join(", ") : "none of the budgets"} and includes it elsewhere in 1–5×.</p>
       <p className="small">Model: two-head LightGBM on out-of-time world-model parcel features, blended with a sale-recency prior. Commit {h.commit}. Code: github.com/Christopher-Vu/DSSGoonathon2026</p>
     </Step>
   );

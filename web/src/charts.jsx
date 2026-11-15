@@ -23,10 +23,17 @@ function Tip({ tip }) {
   );
 }
 
+// nudge end-of-line labels apart so they never collide (min 13px)
+function endLabels(ls) {
+  const o = [...ls].sort((a, b) => a.y - b.y);
+  for (let i = 1; i < o.length; i++) if (o[i].y - o[i - 1].y < 13) o[i].y = o[i - 1].y + 13;
+  return o;
+}
+
 /** series: [{key, label, color, values:[y], band?:[[lo,hi]], dash?}] over shared xs. cursor: x value to mark. */
 export function LineChart({ xs, series, h = 190, cursor, xfmt = (x) => x, yfmt = (y) => fmt(y, 0), xlabel, logx }) {
   const [hov, setHov] = useState(null);
-  const m = { l: 34, r: 64, t: 10, b: 26 };
+  const m = { l: 34, r: 84, t: 10, b: 26 };
   const fx = logx ? Math.log : (x) => x;
   const x0 = fx(xs[0]), x1 = fx(xs[xs.length - 1]);
   const all = series.flatMap((s) => [...s.values, ...(s.band || []).flat()]).filter((v) => v != null);
@@ -56,16 +63,16 @@ export function LineChart({ xs, series, h = 190, cursor, xfmt = (x) => x, yfmt =
           </g>
         ))}
         <line x1={m.l} x2={W - m.r} y1={Y(0)} y2={Y(0)} stroke="var(--axis)" />
-        {xs.filter((x, i) => xs.length < 8 || [1, 2, 5, 10, 20].includes(x) || i === 0).map((x) => (
+        {xs.filter((x, i) => xs.length < 8 || Number.isInteger(x)).map((x) => (
           <text key={x} x={X(x)} y={h - 8} textAnchor="middle">{xfmt(x)}</text>
         ))}
-        {xlabel && <text x={W - m.r} y={h - 8} textAnchor="start" dx={6}>{xlabel}</text>}
+        {xlabel && <text x={W - m.r} y={h - 8} textAnchor="start" dx={10}>{xlabel}</text>}
         {series.map((s) => s.band && <path key={s.key + "b"} d={area(s.band)} fill={s.color} opacity={0.16} />)}
         {series.map((s) => (
           <path key={s.key} d={path(s.values)} fill="none" stroke={s.color} strokeWidth={2} strokeDasharray={s.dash} />
         ))}
-        {series.map((s) => (
-          <text key={s.key + "l"} className="lbl" x={X(xs[xs.length - 1]) + 6} y={Y(s.values[s.values.length - 1]) + 4}>{s.label}</text>
+        {endLabels(series.map((s) => ({ key: s.key, label: s.label, y: Y(s.values[s.values.length - 1]) }))).map((l) => (
+          <text key={l.key + "l"} className="lbl" x={X(xs[xs.length - 1]) + 6} y={l.y + 4}>{l.label}</text>
         ))}
         {ci != null && <line x1={X(xs[ci])} x2={X(xs[ci])} y1={m.t} y2={h - m.b} stroke="var(--ink-2)" strokeDasharray="2 3" />}
         {ci != null && series.map((s) => <circle key={s.key + "c"} cx={X(xs[ci])} cy={Y(s.values[ci])} r={4} fill={s.color} stroke="var(--surface)" strokeWidth={2} />)}
@@ -136,7 +143,7 @@ export function Hist({ counts, edges, color = "var(--city)", h = 150, xlabel = "
 
 /** fan: {q:{10:[..],25,50,75,90}, paths:[[..]], realized:[..]} over years */
 export function Fan({ fan, years, h = 200, showRealized = true, progress = 1 }) {
-  const m = { l: 34, r: 70, t: 10, b: 26 };
+  const m = { l: 34, r: 56, t: 10, b: 26 };
   const ymax = Math.max(...fan.q["90"], ...fan.realized, ...fan.paths.flat()) * 1.08 || 1;
   const X = (i) => m.l + (i / (years.length - 1)) * (W - m.l - m.r);
   const Y = (y) => h - m.b - (y / ymax) * (h - m.t - m.b);
@@ -155,7 +162,7 @@ export function Fan({ fan, years, h = 200, showRealized = true, progress = 1 }) 
       <path d={band(fan.q["25"], fan.q["75"])} fill="var(--model)" opacity={0.2} />
       {fan.paths.slice(0, np).map((p, i) => <path key={i} d={line(p)} fill="none" stroke="var(--model)" strokeWidth={1} opacity={0.28} />)}
       <path d={line(fan.q["50"])} fill="none" stroke="var(--model)" strokeWidth={2} />
-      <text className="lbl" x={X(years.length - 1) + 6} y={Y(fan.q["50"][years.length - 1]) + 4}>model median</text>
+      <text className="lbl" x={X(years.length - 1) + 6} y={Y(fan.q["50"][years.length - 1]) + 4}>median</text>
       {showRealized && <>
         <path d={line(fan.realized)} fill="none" stroke="var(--event)" strokeWidth={2.5} />
         <text className="lbl" x={X(years.length - 1) + 6} y={Y(fan.realized[years.length - 1]) + 4}>actual</text>

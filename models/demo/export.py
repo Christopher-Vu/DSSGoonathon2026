@@ -28,10 +28,24 @@ MULTS = [0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20]
 YEARS = list(range(2019, 2025))
 
 
+def clean(o):
+    if isinstance(o, dict):
+        return {str(k): clean(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [clean(v) for v in o]
+    if isinstance(o, (np.integer,)):
+        return int(o)
+    if isinstance(o, (float, np.floating)):
+        return float(o) if np.isfinite(o) else None
+    if isinstance(o, np.bool_):
+        return bool(o)
+    return o
+
+
 def dump(name, obj):
     OUT.mkdir(parents=True, exist_ok=True)
     p = OUT / f"{name}.json"
-    p.write_text(json.dumps(obj, separators=(",", ":"), default=float))
+    p.write_text(json.dumps(clean(obj), separators=(",", ":"), allow_nan=False, default=float))
     print(f"wrote {p} ({p.stat().st_size / 1e3:.0f} kB)", flush=True)
 
 
