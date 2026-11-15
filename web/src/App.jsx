@@ -25,11 +25,9 @@ const VIEWS = {
   honesty: { ...SF, zoom: 11.6, pitch: 0, bearing: 0 },
 };
 // on wide screens the story panel covers the left ~40%: shift the camera so the city sits in the open area
-const WIDE = new Set(["wm", "sim", "honesty"]);
-const framed = (v, id) => {
+const framed = (v) => {
   if (typeof window === "undefined" || window.innerWidth <= 720) return v;
-  const k = WIDE.has(id) && window.innerWidth > 1000 ? 0.34 : 0.2;
-  return { ...v, longitude: v.longitude - (k * window.innerWidth * 360) / (512 * 2 ** v.zoom) };
+  return { ...v, longitude: v.longitude - (0.2 * window.innerWidth * 360) / (512 * 2 ** v.zoom) };
 };
 const SECTIONS = ["hero", "wm", "frozen", "budget", "futures", "sim", "honesty"];
 const FILES = ["headline", "sweep", "fairness", "futures", "risk_map", "wm", "sim"];
@@ -71,7 +69,7 @@ export default function App() {
     return () => io.disconnect();
   }, [d.headline]);
   useEffect(() => {
-    setView((v) => ({ ...framed(VIEWS[active], active), transitionDuration: 2200, transitionInterpolator: new FlyToInterpolator({ speed: 1.4 }) }));
+    setView((v) => ({ ...framed(VIEWS[active]), transitionDuration: 2200, transitionInterpolator: new FlyToInterpolator({ speed: 1.4 }) }));
   }, [active]);
   // hero: slow orbit
   useEffect(() => {
@@ -333,7 +331,7 @@ function topHex(fh) {
 function Step({ id, refEl, children, cls = "" }) {
   return (
     <section className={`step ${cls}`} data-id={id} ref={refEl} id={id}>
-      <div className={`panel${WIDE.has(id) ? " wide" : ""}`}>{children}</div>
+      <div className="panel">{children}</div>
     </section>
   );
 }
@@ -376,7 +374,6 @@ function WM({ refEl, wm, sel, setSel, wm16, setWm16 }) {
     <Step id="wm" refEl={refEl}>
       <p className="kicker">1 · The world model</p>
       <h2>It learned the city without a map</h2>
-      <div className="cols"><div>
       <p>A 5M-parameter transformer read every sale, permit, eviction notice and buyout in San Francisco up to 2018,
         as a sequence per hexagon, and learned to fill in what was hidden and predict next year. Each hexagon's color is
         its learned embedding. No neighborhood boundaries were given; they show up anyway.</p>
@@ -386,8 +383,7 @@ function WM({ refEl, wm, sel, setSel, wm16, setWm16 }) {
         {sel && <button className="pill" onClick={() => setSel(null)}>Clear similarity</button>}
       </div>
       <p className="small">Click any hexagon: everything the model thinks is alike lights up and rises.</p>
-      </div><div>
-      <p style={{ marginBottom: 4, color: "var(--ink)" }}>The embeddings predict real outcomes better than hand-made features</p>
+      <p style={{ marginTop: 14, marginBottom: 4, color: "var(--ink)" }}>The embeddings predict real outcomes better than hand-made features</p>
       <Bars rows={rows} vfmt={(v) => (v >= 0 ? "+" : "") + fmt(v, 2)} />
       <p className="small">Lift in R² (PR-AUC for the binary target) from a linear probe on the embeddings over the same probe on hand-made features, with 95% CI{pf ? `, on held-out neighborhoods (locked test, run once). Mean lift +${fmt(pf.mean_lift, 2)}` : ", validation split"}.</p>
       {ls && <>
@@ -396,7 +392,6 @@ function WM({ refEl, wm, sel, setSel, wm16, setWm16 }) {
           series={[{ key: "l", label: "probe lift", color: "var(--model)", values: ls.map((r) => r.mean_lift_emb) }]} cursor={wm.lam} />
         <p className="small">λ weights the next-year loss. λ = {wm.lam} was chosen on the 2016 model only, before any test data was read.</p>
       </>}
-    </div></div>
     </Step>
   );
 }
@@ -507,7 +502,6 @@ function Sim({ refEl, sim, scen, setScen, cls, setCls }) {
     <Step id="sim" refEl={refEl}>
       <p className="kicker">5 · What eviction costs</p>
       <h2>Displacement moves people away from care</h2>
-      <div className="cols"><div>
       <p>{real.n.toLocaleString()} simulated households, built from real Census microdata and matched to real 2019–24 displacement events.
         Each moves where similar renters actually moved (Census migration flows), then we route by transit (or car, if they have one)
         to the nearest open clinic, pharmacy and grocery, before and after.</p>
@@ -519,8 +513,7 @@ function Sim({ refEl, sim, scen, setScen, cls, setCls }) {
         <div className="counter" style={{ "--c": "var(--event)" }}><b>{fmt(dd.pct_lose_30, 1)}%</b><span>lose 30-minute access</span></div>
       </div>
       <Hist counts={dd.hist} edges={dd.edges} />
-      </div><div>
-      <table>
+      <table style={{ marginTop: 8 }}>
         <thead><tr><th>Group</th><th>median Δ</th><th>% lose 30-min</th></tr></thead>
         <tbody>
           {["has_car", "age_band", "lang"].flatMap((g) => Object.entries(dd.by[g] || {}).filter(([, v]) => v.n >= 100).map(([k, v]) => (
@@ -529,11 +522,10 @@ function Sim({ refEl, sim, scen, setScen, cls, setCls }) {
       </table>
       {sim.personas?.length > 0 && <>
         <p style={{ color: "var(--ink)", marginBottom: 6 }}>Synthetic households (Census microdata, not real people)</p>
-        <div className="grid2">{sim.personas.slice(0, 2).map((p, i) => (
+        <div className="grid2">{sim.personas.slice(0, 4).map((p, i) => (
           <div className="persona" key={i}><b>Age {p.age_band}, {p.has_car ? "has a car" : "no car"}</b><br />{p.lang} speaker · income {p.income_band}
             <br />clinic: {p.clinic_before} → <b>{p.clinic_after} min</b></div>))}</div>
       </>}
-      </div></div>
       <p className="small" style={{ marginTop: 8 }}>Covers all 2019–24 displacement events citywide, not only buildings in the budget universe. Within-SF moves are excluded, so this covers households that left the city. Migration model held-out JSD {fmt(sim.summary?.migration_validation?.jsd_model, 2)} (population-proportional baseline {fmt(sim.summary?.migration_validation?.jsd_population_prop, 2)}).</p>
     </Step>
   );
@@ -550,7 +542,6 @@ function Honesty({ refEl, fair, h, sw }) {
     <Step id="honesty" refEl={refEl}>
       <p className="kicker">6 · Honesty</p>
       <h2>Who it protects, and what it doesn't claim</h2>
-      <div className="cols"><div>
       <div className="row" style={{ marginBottom: 8 }}>
         {[["income_tercile", "tract income"], ["nonwhite_tercile", "tract % nonwhite"], ["size_band", "building size"], ["supervisor_district", "district"]].map(([k, l]) =>
           <button key={k} className="pill" aria-pressed={dim === k} onClick={() => setDim(k)}>{l}</button>)}
@@ -562,15 +553,13 @@ function Honesty({ refEl, fair, h, sw }) {
           {sw && <tr><td><i>households protected</i></td><td></td><td>{fmt(at(1)?.model, 1)}</td><td>{fmt(at(5)?.model, 1)}</td><td>{fmt(at(1)?.city_policy, 1)}</td></tr>}</tbody>
       </table>}
       <p className="small">Share of all households protected that fall in each group, next to that group's share of actual displacement.</p>
-      </div><div>
-      <p><b style={{ color: "var(--ink)" }}>Ethics.</b> A building-level risk list is also a shopping list for speculators.
+      <p style={{ marginTop: 12 }}><b style={{ color: "var(--ink)" }}>Ethics.</b> A building-level risk list is also a shopping list for speculators.
         Everything public here is aggregated to hexagons; building-level output is for program staff and land trusts.</p>
       <p><b style={{ color: "var(--ink)" }}>Leakage locks.</b> The world model behind every number here was trained only on data through 2018; tests enforce no year after the cutoff and no sponsor data in the backtest. The test split was scored by a frozen, committed model.</p>
       <p><b style={{ color: "var(--ink)" }}>Caveats.</b> A purchase is assumed to prevent all later Ellis, owner move-in and buyout displacement in the building (the same upper bound for every strategy).
         Notices are reported per block-face and shared across its buildings by unit count. Reported notices miss informal displacement.
         The city buys for more than prevention (often buildings already in trouble), so its pattern is not a prevention-only strategy.
         Over a single six-year window, the bootstrap interval on the model-minus-city difference excludes zero at {sig.length ? sig.join(", ") : "none of the budgets"} and includes it elsewhere in 1–5×.</p>
-      </div></div>
       <p className="small">Model: two-head LightGBM on out-of-time world-model parcel features, blended with a sale-recency prior. Commit {h.commit}. Code: github.com/Christopher-Vu/DSSGoonathon2026</p>
     </Step>
   );
