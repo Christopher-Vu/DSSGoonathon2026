@@ -10,8 +10,10 @@ mkdir -p "$TMP/env" "$TMP/data"
 trap 'rm -rf "$TMP"' EXIT
 
 tar -xzf "$ENV_TGZ" -C "$TMP/env"
+set +u   # activate/conda-unpack read unset vars (CONDA_PREFIX)
 source "$TMP/env/bin/activate"
 conda-unpack
+set -u
 
 stage_inputs() {  # $1 = cutoff
   mkdir -p "$TMP/data/tokens"
