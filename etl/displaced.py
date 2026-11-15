@@ -22,7 +22,7 @@ INT, D = Path("data/interim"), Path("data/processed")
 LO, HI = 2019, 2024
 TIGER20 = ("https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/6/query"
            "?where=STATE%3D%2706%27+AND+COUNTY%3D%27075%27&outFields=GEOID&f=geojson&outSR=4326")
-STRATS = [(s, m) for m in (1, 5) for s in ("ours", "city_policy", "recently_sold_heuristic")]
+STRATS = [(s, m) for m in (1, 5) for s in ("ours", "city_policy")]
 
 
 def tracts2020():

@@ -84,6 +84,27 @@ def euclid_long(orig: pd.DataFrame, dest: pd.DataFrame, mode: str, rc: dict) -> 
     return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(columns=["from_id", "to_id", "travel_time"])
 
 
+def candidate_pois(orig: pd.DataFrame, dest: pd.DataFrame, departs: list[str], k: int) -> pd.DataFrame:
+    """Union, over origins, classes and departures' open sets, of the k straight-line-nearest POIs.
+    The network-nearest POI is almost always among them, and r5 skips thousands of far destinations."""
+    lat0 = np.radians(float(orig["lat"].mean()))
+    oxy = np.c_[orig["lon"].to_numpy() * np.cos(lat0), orig["lat"].to_numpy()]
+    keep = np.zeros(len(dest), bool)
+    dxy = np.c_[dest["lon"].to_numpy() * np.cos(lat0), dest["lat"].to_numpy()]
+    for c in CLASSES:
+        for d in departs:
+            col = open_col(d)
+            m = (dest["cls"].to_numpy() == c) & (dest[col].to_numpy() if col in dest else True)
+            idx = np.flatnonzero(m)
+            if not len(idx):
+                continue
+            kk = min(k, len(idx))
+            d2 = ((oxy[:, None, :] - dxy[idx][None, :, :]) ** 2).sum(-1)
+            near = np.argpartition(d2, kk - 1, axis=1)[:, :kk]
+            keep[idx[np.unique(near)]] = True
+    return dest[keep]
+
+
 # ---------------------------------------------------------------- r5 backend
 class R5Router:
     def __init__(self, osm_pbf: Path, gtfs: list[Path], rc: dict):
@@ -99,34 +120,38 @@ class R5Router:
         self.net = r5py.TransportNetwork(str(osm_pbf), [str(g) for g in gtfs])
         log.info("network ready in %.0fs", time.time() - t0)
 
-    def long(self, orig: pd.DataFrame, dest: pd.DataFrame, mode: str, depart: str) -> pd.DataFrame:
+    def long(self, orig: pd.DataFrame, dest: pd.DataFrame, mode: str, depart: str, departs=None) -> pd.DataFrame:
         import geopandas as gpd
 
         r5py, rc = self.r5py, self.rc
+        max_min = rc.get("car_max_minutes", rc["max_minutes"]) if mode == "car" else rc["max_minutes"]
+        k = int(rc.get("candidates_per_class", 0))
         hour = DEPARTS[depart]
         d0 = dt.datetime.fromisoformat(rc["date"]).replace(hour=int(hour), minute=int(round(hour % 1 * 60)))
         modes = [r5py.TransportMode.TRANSIT, r5py.TransportMode.WALK] if mode == "transit_walk" else [r5py.TransportMode.CAR]
-        dg = gpd.GeoDataFrame({"id": dest["poi_id"].to_numpy()},
-                              geometry=gpd.points_from_xy(dest["lon"], dest["lat"]), crs="EPSG:4326")
         out = []
         step = int(rc.get("origin_chunk", 400))
         for s in range(0, len(orig), step):
             o = orig.iloc[s:s + step]
             og = gpd.GeoDataFrame({"id": o["cell"].to_numpy()},
                                   geometry=gpd.points_from_xy(o["lon"], o["lat"]), crs="EPSG:4326")
+            dc = candidate_pois(o, dest, departs or [depart], k) if k else dest
+            dg = gpd.GeoDataFrame({"id": dc["poi_id"].to_numpy()},
+                                  geometry=gpd.points_from_xy(dc["lon"], dc["lat"]), crs="EPSG:4326")
             t0 = time.time()
             m = r5py.TravelTimeMatrix(
                 self.net, origins=og, destinations=dg, departure=d0,
                 departure_time_window=dt.timedelta(minutes=rc["departure_window_min"]),
-                transport_modes=modes, max_time=dt.timedelta(minutes=rc["max_minutes"]),
+                transport_modes=modes, max_time=dt.timedelta(minutes=max_min),
             )
             m = pd.DataFrame(m)[["from_id", "to_id", "travel_time"]].dropna()
             out.append(m)
-            log.info("%s %s origins %d-%d: %d pairs in %.0fs", mode, depart, s, s + len(o), len(m), time.time() - t0)
+            log.info("%s %s origins %d-%d (%d dests): %d pairs in %.0fs", mode, depart, s, s + len(o), len(dc), len(m),
+                     time.time() - t0)
         return pd.concat(out, ignore_index=True) if out else pd.DataFrame(columns=["from_id", "to_id", "travel_time"])
 
 
-def access_table(needs: pd.DataFrame, pois: pd.DataFrame, rc: dict, router=None) -> pd.DataFrame:
+def access_table(needs: pd.DataFrame, pois: pd.DataFrame, rc: dict, router=None, cache_dir=None) -> pd.DataFrame:
     """needs: unique (cell, mode, depart) rows. Car rows also need transit rows (car households take
     min(car, transit)), so the caller should include them. Returns wide table keyed by (cell, mode, depart)."""
     max_min = float(rc["max_minutes"])
@@ -146,11 +171,19 @@ def access_table(needs: pd.DataFrame, pois: pd.DataFrame, rc: dict, router=None)
                 dest = pois[pois[open_col(run_depart)]]
             else:
                 dest = pois[pois[[open_col(d) for d in departs]].any(axis=1)]
+            cp = Path(cache_dir) / f"access_{mode}_{run_depart}_{len(cells)}_{len(dest)}.parquet" if cache_dir else None
+            if cp is not None and cp.exists():  # resume after a timeout
+                pieces.append(pd.read_parquet(cp))
+                log.info("%s/%s: cached %s", mode, run_depart, cp.name)
+                continue
             t0 = time.time()
             long = (euclid_long(orig, dest, mode, rc) if backend == "euclid"
-                    else router.long(orig, dest, mode, run_depart))
-            best = _reduce(long, pois, departs, max_min)
+                    else router.long(orig, dest, mode, run_depart, departs))
+            cap = float(rc.get("car_max_minutes", max_min)) if mode == "car" else max_min
+            best = _reduce(long, pois, departs, cap)
             w = _wide(best, cells, departs, mode)
+            if cp is not None:
+                w.to_parquet(cp, index=False)
             pieces.append(w)
             log.info("%s/%s: %d cells x %d POIs in %.0fs", mode, run_depart, len(cells), len(dest), time.time() - t0)
     tab = pd.concat(pieces, ignore_index=True)

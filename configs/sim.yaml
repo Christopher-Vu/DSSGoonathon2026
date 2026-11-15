@@ -43,6 +43,8 @@ routing:
   java_home: null               # else env JAVA_HOME
   date: "2026-11-17"            # a Tuesday inside the GTFS service window (checked at run time)
   max_minutes: 120
+  car_max_minutes: 45          # car households fall back to transit beyond this (min(car, transit))
+  candidates_per_class: 12     # route only to the k straight-line-nearest open POIs per class per origin chunk
   departure_window_min: 10
   origin_chunk: 400
   euclid_speeds_kmh: {transit_walk: 12.0, car: 35.0}   # euclid backend only
