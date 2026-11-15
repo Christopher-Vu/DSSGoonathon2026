@@ -25,14 +25,10 @@
 
 ## Not done / next
 
-1. **No r5 run has finished.** Local r5 froze the laptop, so r5 must run **only on Savio**:
-   - hand stream A the command `sbatch sim/patient/slurm/sim_full.sbatch <households.parquet>`;
-   - the data needs rsyncing to `/global/scratch/users/christophervu/dssg/data`;
-   - for the fixture, add a flag to limit `--max-memory` and a fixture variant of the sbatch script.
-2. The sbatch script needs updating:
-   - use the gtfs_clean outputs;
-   - pass `--pois-source places`;
-   - make sure `--max-memory` works through r5py's sys.argv parsing.
+1. **No r5 run has finished.** Local r5 froze the laptop, so r5 runs **only on Savio**.
+   - sbatch is ready: `sim/patient/slurm/sim_full.sbatch {fixture|<hh.parquet>}`.
+   - Copy and submit steps are in `sim/patient/slurm/README.md`. Stream A submits.
+2. (done) The sbatch script uses `_clean` GTFS, `--pois-source places`, `--max-memory 48G`, and skips ETL steps whose outputs exist.
 3. Re-run the handcheck after the Savio run. Hand 20 transit URLs to a human.
 4. Push the branch and open a PR. The PR body needs:
    - headline numbers;
