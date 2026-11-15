@@ -33,8 +33,8 @@ CITY_F = ["units", "log_assessed_per_unit", "age", "yrs_since_sale", "bf_rc_unit
           "bf_ellis_omi_3y", "permits_3y"]
 
 
-def price_model(sp, sales):
-    s = sales[(sales.sale_year.between(2014, T)) & (sales.assessed_after > 0) & (sales.jump > 1.2)]
+def price_model(sp, sales, T=T):
+    s = sales[(sales.sale_year.between(T - 4, T)) & (sales.assessed_after > 0) & (sales.jump > 1.2)]
     x = sp[(sp.rent_ctrl == 1)][["blklot", "year", "units", "age", "property_area", "analysis_neighborhood"]]
     s = s.merge(x, left_on=["blklot", "sale_year"], right_on=["blklot", "year"])
 
@@ -52,11 +52,11 @@ def price_model(sp, sales):
     return predict, {"n_sales": len(s), "r2_in_sample": float(r2)}
 
 
-def realized_value(u):
+def realized_value(u, lo=OUT_LO, hi=OUT_HI):
     bo = pd.read_parquet(INT / "buyout_events.parquet")
-    bo = bo[bo.year.between(OUT_LO, OUT_HI)]
+    bo = bo[bo.year.between(lo, hi)]
     ev = pd.read_parquet(INT / "eviction_events.parquet")
-    ev = ev[ev.bf_ok & ev.ellis_omi & ev.year.between(OUT_LO, OUT_HI)]
+    ev = ev[ev.bf_ok & ev.ellis_omi & ev.year.between(lo, hi)]
     v_b = u.blklot.map(bo.groupby("blklot").tenants_share.sum()).fillna(0).values
     v_e = (u.bf_share * u.bf.map(ev.groupby("bf").size()).fillna(0)).values
     return v_b, v_e
