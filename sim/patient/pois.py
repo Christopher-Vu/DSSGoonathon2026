@@ -49,6 +49,31 @@ PLACES_EXCLUDE = re.compile(
     re.I,
 )
 
+# Name-level exclusions from the 30-per-class spot check (2026-11-14): specialty / non-entry-point listings
+# that carry a generic primary category.
+NAME_EXCLUDE = {
+    "clinic": re.compile(
+        r"acupunct|L\.?Ac|chiropract|injury|physical therap|PT|sports|cardio|cardiac|neuro|NICU|intensive care|"
+        r"ambulance|imaging|radiolog|lab|laborator|dialysis|surg|oncolog|cancer|dermatolog|fertility|cosmetic|"
+        r"med ?spa|weight|vein|orthop|ortho|sleep|plastic|aesthetic|hearing|vision|eye|optom|infusion|"
+        r"psychiat|behavioral|rehab|hospice|veterin|dental|dentist|pain", re.I),
+    "pharmacy": re.compile(r"specialty|technolog|services|testing|infusion|compounding|PharmD|veterin|cannabis|"
+                           r"AFB|air force|VA|veterans|pharmerica|institutional|long.term", re.I),
+    "grocery": re.compile(r"olive|wine|liquor|smoke|vape|gift|delivery|food bank|catering|bakery|coffee", re.I),
+}
+
+# Pharmacy listings must look like a retail pharmacy by name (the category holds pharmacists, OTs, etc.).
+PHARMACY_NAME_REQUIRED = re.compile(r"pharm|drug|rx|apothec|farmacia|botica|walgreens|cvs|rite ?aid|chemist|costco|kaiser", re.I)
+# Clinic additions from spot-check round 2
+NAME_EXCLUDE["clinic"] = re.compile(
+    NAME_EXCLUDE["clinic"].pattern
+    + r"|podiatr|WIC|^\d+ [A-Za-z ]+(drive|dr|st|street|ave|avenue|blvd|road|rd|way)|^suite"
+    + r"|audiolog|allerg|immunolog|nephrolog|infectious|inpatient|corporate|headquarters|brain|urogyn|urolog|gastro"
+    + r"|endocrin|rheumat|pulmon|pediatric|kids|children|maternal|obstet|genetic|transplant|wound|hyperbaric",
+    re.I)
+# Department listings ("Nephrology: Palo Alto Center: Palo Alto Medical Foundation") count only for primary/urgent care
+DEPT_OK = re.compile(r"^(family|internal|primary|urgent|express|walk|general|adult|community)", re.I)
+
 # OSM tag -> class (stand-in)
 OSM_TAGS = {
     ("amenity", "clinic"): "clinic", ("amenity", "doctors"): "clinic", ("amenity", "hospital"): "clinic",
@@ -242,8 +267,17 @@ def load_places(csv_path: Path, default_hours: dict, bbox: tuple[float, float, f
     for c in ("permanently_closed", "temporarily_closed"):
         if c in df:
             df = df[~df[c].astype(str).str.lower().isin(["true", "1", "yes"])]
-    df["cls"] = [map_places_category(a, b) for a, b in zip(df["category"], df.get("all_categories"))]
+    df["cls"] = [map_places_category(a) for a in df["category"]]
     df = df[df["cls"].notna()].copy()
+    def _bad(c: str, n: str) -> bool:
+        if NAME_EXCLUDE[c].search(n):
+            return True
+        if c == "pharmacy" and not PHARMACY_NAME_REQUIRED.search(n):
+            return True
+        return c == "clinic" and ":" in n and not DEPT_OK.search(n)
+
+    drop = np.array([_bad(c, str(n)) for c, n in zip(df["cls"], df["name"])])
+    df = df[~drop].copy()
     out = pd.DataFrame({
         "poi_id": "places_" + df["place_id"].astype(str),
         "source": "places",

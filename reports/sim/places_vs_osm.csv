@@ -1,4 +1,4 @@
 ,n_places,n_osm,osm_matched_in_places_150m,places_matched_in_osm_150m,ratio_places_to_osm
-clinic,13138,1237,0.819,0.582,10.621
-grocery,2303,1199,0.919,0.556,1.921
-pharmacy,1045,418,0.809,0.407,2.5
+clinic,11311,1237,0.795,0.586,9.144
+grocery,2249,1199,0.914,0.563,1.876
+pharmacy,756,418,0.78,0.46,1.809

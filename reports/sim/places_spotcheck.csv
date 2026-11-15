@@ -1,91 +1,91 @@
-cls,name,raw_category,lat,lon,hours_default,ok,note
-clinic,Erin Kobashigawa,Internist,37.783512,-122.4406782,True,,
-clinic,San Francisco Preventive Medical Group,Medical clinic,37.7370891,-122.4705849,False,,
-clinic,Dr. Lea Hoff Arcand,Family practice physician,38.4716882,-122.7273135,True,,
-clinic,"Cathrien Abdelnor, MD",Family practice physician,37.8533394,-122.0349998,False,,
-clinic,Pacific Heights Medical Group,Medical Center,37.791278,-122.431814,False,,
-clinic,"Brenda Manfredi, MD",Family practice physician,38.5510581,-122.8043067,False,,
-clinic,"Dr. Barbara Griesau, MD",Family practice physician,38.006764,-122.1327937,True,,
-clinic,"Linda Obekpa-Agwada, MD",Family practice physician,37.924259,-121.7349525,False,,
-clinic,Dr. Mia Karamatsu,Family practice physician,37.4330746,-122.1750485,True,,
-clinic,Kaiser Building #2,Medical Center,37.9508517,-121.7753437,True,,
-clinic,Neurosurgery: Burlingame Center: Palo Alto Medical Foundation,Hospital,37.5926377,-122.3824618,True,,
-clinic,Dr. Robert Tseng,Internist,37.746859,-122.420333,True,,
-clinic,San Mateo Auto Accident Injury Clinic,Medical clinic,37.5610695,-122.3241542,True,,
-clinic,Ronald Robinson,Family practice physician,37.8987016,-122.2975393,True,,
-clinic,Neonatal Intensive Care Unit (NICU): Mills-Peninsula Medical Center,Medical Center,37.5923321,-122.3823444,True,,
-clinic,Mission Neighborhood Health Center,Medical clinic,37.7646083,-122.4165531,False,,
-clinic,Family Medicine: Dublin Center: Palo Alto Medical Foundation,Medical clinic,37.7052145,-121.8730778,False,,
-clinic,"Celina J. Chau, D.O.",Family practice physician,37.4401166,-122.1614775,False,,
-clinic,Dr. Ansoo Batsha,Internist,37.9130871,-122.0408542,True,,
-clinic,"Maryam Kalami, LAC",Family practice physician,37.2536531,-121.9527575,True,,
-clinic,Urgent & Walk-In Care First Street - El Camino Health,Urgent care center,37.4170978,-121.9543001,False,,
-clinic,PTR Sports,Medical Center,37.2687594,-121.9541545,True,,
-clinic,CLAUDELL STEPHENS,Medical clinic,38.0054928,-122.3073446,True,,
-clinic,"John T Garcia, M.D.",Family practice physician,37.7949953,-122.3984902,True,,
-clinic,The Dennis A.Le Vett Cardiovascular Care Center,Medical Center,37.4396193,-122.1594777,True,,
-clinic,Ace Integrative Health - A Precision Medicine Clinic,Medical clinic,37.4556573,-122.1645156,False,,
-clinic,"Edwin Hassid, MD",Internist,37.7889572,-122.4167293,False,,
-clinic,"Praise Shang, MD",Family practice physician,37.9267161,-122.0228324,False,,
-clinic,Dr. Michele Leary,Family practice physician,38.2362197,-122.069995,True,,
-clinic,Washington/Morris Hyman Ambulance Bay,Hospital,37.5563518,-121.9794576,True,,
-grocery,Grand Bazaar Foods,Grocery store,37.5046955,-122.258644,False,,
-grocery,Saba Grocers,Grocery store,37.7956504,-122.2758598,True,,
-grocery,African Caribbean Foods & Market,Grocery store,37.2933592,-121.9324339,False,,
-grocery,Gourmet Market,Grocery store,37.8040622,-122.2641178,False,,
-grocery,Queen of Sheba Market,Grocery store,37.7858221,-122.2138956,False,,
-grocery,Grocery Outlet,Grocery store,37.403226,-122.0097437,False,,
-grocery,Your Market,Grocery store,37.7591853,-122.5078141,False,,
-grocery,Target Grocery,Grocery store,37.6662905,-122.1208433,False,,
-grocery,The Olive Press,Gourmet grocery store,38.3017837,-122.2816053,False,,
-grocery,Berkeley Bowl West,Supermarket,37.8530556,-122.29,False,,
-grocery,Bank Food,Grocery store,38.2339167,-122.0758648,False,,
-grocery,Chinatown Market,Produce market,37.7991078,-122.271311,False,,
-grocery,Ramirez Produce Market & Carniceria,Grocery store,37.6902279,-122.462137,False,,
-grocery,Oak Gourmet (OakHill Market),Supermarket,37.7743106,-122.4274125,False,,
-grocery,Dahlia & Sage Community Market,Grocery store,38.8070194,-123.0173629,False,,
-grocery,Andy's Sun Valley Market,Grocery store,37.9823471,-122.5477035,False,,
-grocery,Grocery Outlet,Grocery store,37.9598747,-122.5080456,False,,
-grocery,Hashi Market,Japanese grocery store,37.3219154,-122.0335146,False,,
-grocery,Chico's Market,Grocery store,37.9574903,-122.3511448,False,,
-grocery,Safeway,Grocery store,37.3646576,-122.0307124,False,,
-grocery,silvestre gusto latinotg,Asian grocery store,37.8214102,-122.2708489,True,,
-grocery,exclusive gift & market,Grocery store,37.7830059,-122.2350372,False,,
-grocery,Lucky,Grocery store,38.40719,-122.83978,False,,
-grocery,Haight Fillmore Whole Foods Co.,Grocery store,37.7719939,-122.4306294,False,,
-grocery,Cardenas Markets,Supermarket,37.9614387,-122.5001922,False,,
-grocery,Safeway,Grocery store,38.1036772,-122.5716128,False,,
-grocery,Canyon Market,Grocery store,37.7340945,-122.4336886,False,,
-grocery,Smart & Final,Grocery store,37.353012,-121.9611587,False,,
-grocery,Sapore Messo,Gourmet grocery store,37.5765372,-121.977701,False,,
-grocery,Powell Grocery,Grocery store,37.7965884,-122.4102915,False,,
-pharmacy,Bascom Pharmacy,Pharmacy,37.325832,-121.9322292,False,,
-pharmacy,Walgreens Pharmacy,Pharmacy,37.7540708,-122.4191098,False,,
-pharmacy,CVS Pharmacy,Pharmacy,38.4272839,-122.6671662,False,,
-pharmacy,Kaiser Permanente Pharmacy - San Leandro,Pharmacy,37.705149,-122.1656667,False,,
-pharmacy,Walgreens Pharmacy,Pharmacy,37.7910889,-122.4205132,False,,
-pharmacy,Safeway Pharmacy,Pharmacy,37.4030758,-122.0793795,False,,
-pharmacy,Sun Pharmacy,Pharmacy,37.3189463,-121.8243468,False,,
-pharmacy,Farmacia International,Pharmacy,37.7576176,-122.4187552,False,,
-pharmacy,CVS Pharmacy,Pharmacy,38.0048443,-122.5409261,False,,
-pharmacy,Charesela Technologies Inc,Pharmacy,37.4457565,-122.1575127,True,,
-pharmacy,Walgreens Specialty Pharmacy,Pharmacy,37.785989,-122.42099,False,,
-pharmacy,Walgreens Pharmacy,Pharmacy,37.5712877,-122.0313012,False,,
-pharmacy,"Hanzhi H. Long, PharmD",Pharmacy,37.630643,-122.0951081,True,,
-pharmacy,PastRx,Pharmacy,37.2570457,-121.7796245,True,,
-pharmacy,Walgreens Pharmacy,Pharmacy,37.8041881,-122.2717948,False,,
-pharmacy,COVID-19 Drive-Thru Testing at Walgreens,Pharmacy,37.2851635,-121.9776147,False,,
-pharmacy,Walgreens Pharmacy,Pharmacy,37.2996062,-121.9811367,False,,
-pharmacy,Garner pharmacy,Pharmacy,37.0086013,-121.5693041,True,,
-pharmacy,Walgreens Pharmacy,Pharmacy,37.3580869,-121.8617061,False,,
-pharmacy,CVS Pharmacy,Pharmacy,37.4920461,-121.9276648,False,,
-pharmacy,Valley Specialty Center Pharmacy,Pharmacy,37.3151308,-121.9333559,False,,
-pharmacy,Creekside Pharmacy,Pharmacy,38.4424206,-122.7043279,False,,
-pharmacy,Kaiser Permanente Pharmacies,Pharmacy,37.2398615,-121.8002973,False,,
-pharmacy,Costco Pharmacy,Pharmacy,37.6424644,-122.4005569,False,,
-pharmacy,South Valley Pharmacy Services,Pharmacy,37.0077684,-121.5703704,False,,
-pharmacy,Safeway Pharmacy,Pharmacy,37.2671404,-121.8331753,False,,
-pharmacy,CVS Pharmacy automatic Airport,Pharmacy,37.7112971,-122.2158998,True,,
-pharmacy,CVS Pharmacy,Pharmacy,37.2571878,-121.8990013,False,,
-pharmacy,Walgreens Pharmacy,Pharmacy,37.2500624,-121.8301732,False,,
-pharmacy,Walgreens Pharmacy,Pharmacy,37.9949283,-122.2867665,False,,
+cls,name,raw_category,lat,lon,hours_default,ok,note,reviewer
+clinic,"Dr. Rama Salvekar, MD",Internist,37.8247334,-122.2573341,True,Y,,claude (name+category only; human confirm)
+clinic,Kaleem Naasira,Internist,37.3156923,-121.9370894,True,Y,,claude (name+category only; human confirm)
+clinic,Momina Waqar,Internist,37.3363355,-121.9974585,True,Y,,claude (name+category only; human confirm)
+clinic,Desai Uma MD,Family practice physician,37.8078193,-121.9926848,True,Y,,claude (name+category only; human confirm)
+clinic,KENNETH ALEX MURACHANIAN,Internist,38.4437589,-122.7011068,True,Y,,claude (name+category only; human confirm)
+clinic,Garden Alameda Neighborhood Health Clinic,Medical clinic,37.3361154,-121.9112646,False,Y,,claude (name+category only; human confirm)
+clinic,Dr. Richard Murdoch,Internist,37.8074179,-122.2744254,True,Y,,claude (name+category only; human confirm)
+clinic,Bruce Benedick,Internist,37.479843,-122.2546654,True,Y,,claude (name+category only; human confirm)
+clinic,Metropolitan Medical,Medical clinic,37.7467431,-122.4205603,True,Y,,claude (name+category only; human confirm)
+clinic,Rogers Adam M MD,Internist,37.7630895,-122.4578144,True,Y,,claude (name+category only; human confirm)
+clinic,Farnitano Christopher MD,Family practice physician,38.006764,-122.1327937,True,Y,,claude (name+category only; human confirm)
+clinic,Dr. Elizabeth Olle,Family practice physician,38.0043293,-122.5546467,True,Y,,claude (name+category only; human confirm)
+clinic,"John Quatannens, MD",Internist,37.7834966,-122.4406451,True,Y,,claude (name+category only; human confirm)
+clinic,Renexxion,Medical clinic,37.4236133,-122.1971491,True,N,pharma company,claude (name+category only; human confirm)
+clinic,sonoma valley hospital,Hospital,38.2931574,-122.4670675,True,Y,,claude (name+category only; human confirm)
+clinic,Tobiit Inc PMC,Medical clinic,37.3327223,-121.9090359,True,N,unclear business,claude (name+category only; human confirm)
+clinic,Danville laser lipo,Medical clinic,37.8094534,-121.99043,True,N,cosmetic,claude (name+category only; human confirm)
+clinic,hilltop professional building,Medical Center,37.894543,-122.0535509,True,N,"building, not a clinic",claude (name+category only; human confirm)
+clinic,marin shoulder,Medical clinic,37.9439115,-122.5387325,True,N,orthopedic specialty,claude (name+category only; human confirm)
+clinic,Yuen So,Medical clinic,37.4330746,-122.1750485,True,Y,,claude (name+category only; human confirm)
+clinic,Bernadette Ansolabehere,Family practice physician,37.7641904,-122.241858,True,Y,,claude (name+category only; human confirm)
+clinic,"Dr. Chi-Ling Lin, Do",Internist,37.3128688,-121.9328811,True,Y,,claude (name+category only; human confirm)
+clinic,Vamshi Homeo Clinic,Clinic,37.7902194,-122.3906115,True,N,homeopathy,claude (name+category only; human confirm)
+clinic,El Camino Health Center,Medical Center,37.3667755,-122.0835647,True,Y,,claude (name+category only; human confirm)
+clinic,Santa Clara County Community Assessment,Community health center,37.3158939,-121.9125794,True,N,not a care site,claude (name+category only; human confirm)
+clinic,Lifespring Health,Medical clinic,37.383565,-122.0130042,False,Y,,claude (name+category only; human confirm)
+clinic,"Megan Kirshbaum, PHD",Medical clinic,37.865276,-122.296791,True,N,psychologist,claude (name+category only; human confirm)
+clinic,"Ben L. Littlejohn III, MD",Family practice physician,37.84111,-122.288018,False,Y,,claude (name+category only; human confirm)
+clinic,Dr. Alfred Learner,Internist,37.7460371,-122.419362,True,Y,,claude (name+category only; human confirm)
+clinic,Marin Community Clinics,Community health center,37.9609909,-122.5015025,False,Y,,claude (name+category only; human confirm)
+grocery,Grocery Outlet,Grocery store,37.7182508,-122.1476725,False,Y,,claude (name+category only; human confirm)
+grocery,Village Market,Gourmet grocery store,37.7955703,-122.3933208,False,Y,,claude (name+category only; human confirm)
+grocery,Vijetha Indian Supermarket,Indian grocery store,37.7073575,-121.9112368,False,Y,,claude (name+category only; human confirm)
+grocery,Safeway,Grocery store,37.5876012,-122.0194421,False,Y,,claude (name+category only; human confirm)
+grocery,Super Mira,Japanese grocery store,37.7866222,-122.4298694,False,Y,,claude (name+category only; human confirm)
+grocery,STATE MARKET,Grocery store,37.780484,-122.470562,False,Y,,claude (name+category only; human confirm)
+grocery,Mi Pueblito,Mexican grocery store,37.752848,-122.418242,False,Y,,claude (name+category only; human confirm)
+grocery,Story Supermarket,Asian grocery store,37.332857,-121.8525102,False,Y,,claude (name+category only; human confirm)
+grocery,Western Pacific Filipino Grocery,Asian grocery store,37.3889476,-122.0046346,False,Y,,claude (name+category only; human confirm)
+grocery,Safeway,Grocery store,37.6996123,-122.4815579,False,Y,,claude (name+category only; human confirm)
+grocery,Franklin Market,Grocery store,37.7886975,-122.4234335,False,Y,,claude (name+category only; human confirm)
+grocery,Sunset Super,Supermarket,37.7631526,-122.4839771,False,Y,,claude (name+category only; human confirm)
+grocery,Oxbridge Market & Deli / Hillcrest Market,Grocery store,37.7288826,-122.4197181,False,Y,,claude (name+category only; human confirm)
+grocery,Coconut Hill Indian Grocery Fremont,Indian grocery store,37.4931335,-121.9317093,False,Y,,claude (name+category only; human confirm)
+grocery,Safeway,Grocery store,38.1645935,-122.2550065,False,Y,,claude (name+category only; human confirm)
+grocery,Evergreen Market,Grocery store,37.7563748,-122.4186991,False,Y,,claude (name+category only; human confirm)
+grocery,Oakville Grocery,Gourmet grocery store,38.4373182,-122.4029557,False,Y,,claude (name+category only; human confirm)
+grocery,Lucky,Grocery store,38.442825,-122.68588,False,Y,,claude (name+category only; human confirm)
+grocery,Sprouts Farmers Market,Grocery store,37.3502085,-121.9623419,False,Y,,claude (name+category only; human confirm)
+grocery,Lucky,Grocery store,37.671856,-122.0856,False,Y,,claude (name+category only; human confirm)
+grocery,Cardenas Markets,Supermarket,37.0143421,-121.5831091,False,Y,,claude (name+category only; human confirm)
+grocery,Mabuhay Asian store,Asian grocery store,37.9901031,-121.6961061,False,Y,,claude (name+category only; human confirm)
+grocery,7th and Clement St Market,Grocery store,37.7829478,-122.4673123,True,Y,,claude (name+category only; human confirm)
+grocery,Foods Co.,Grocery store,37.9344756,-122.3569492,False,Y,,claude (name+category only; human confirm)
+grocery,Cardenas Markets,Supermarket,37.9614387,-122.5001922,False,Y,,claude (name+category only; human confirm)
+grocery,Foodmaxx,Grocery store,37.955784,-122.0418,False,Y,,claude (name+category only; human confirm)
+grocery,Grocery Outlet,Grocery store,38.7832207,-123.0133984,False,Y,,claude (name+category only; human confirm)
+grocery,Lucky,Grocery store,37.45654,-122.229614,False,Y,,claude (name+category only; human confirm)
+grocery,Cool Guys Market,Grocery store,37.7216644,-122.4621124,False,Y,,claude (name+category only; human confirm)
+grocery,Watergate Market,Grocery store,37.8376416,-122.3026933,False,Y,,claude (name+category only; human confirm)
+pharmacy,CVS Pharmacy,Pharmacy,37.7885948,-122.2800196,False,Y,,claude (name+category only; human confirm)
+pharmacy,Kaiser Nc - Building 3 Pharmacy,Pharmacy,37.2407242,-121.8004832,False,Y,,claude (name+category only; human confirm)
+pharmacy,Kaiser Foundation Health Plan,Pharmacy,37.2396101,-121.8002779,True,N,admin office,claude (name+category only; human confirm)
+pharmacy,CVS Pharmacy,Pharmacy,37.9205294,-122.3485615,False,Y,,claude (name+category only; human confirm)
+pharmacy,Walgreens Pharmacy,Pharmacy,37.3792328,-122.0727921,False,Y,,claude (name+category only; human confirm)
+pharmacy,CVS Pharmacy,Pharmacy,37.5471884,-121.9879909,False,Y,,claude (name+category only; human confirm)
+pharmacy,Pharmacy,Pharmacy,37.8810262,-122.2703017,False,Y,,claude (name+category only; human confirm)
+pharmacy,Dr. Anne Online Pharmacy,Pharmacy,37.7876341,-122.3927902,False,N,online only,claude (name+category only; human confirm)
+pharmacy,Safeway Pharmacy,Pharmacy,37.7669015,-122.4096016,False,Y,,claude (name+category only; human confirm)
+pharmacy,CVS Pharmacy,Pharmacy,37.6366289,-122.4169149,False,Y,,claude (name+category only; human confirm)
+pharmacy,Walmart Pharmacy,Pharmacy,37.008032,-121.5511738,False,Y,,claude (name+category only; human confirm)
+pharmacy,Walgreens Pharmacy,Pharmacy,38.4585877,-122.6728114,False,Y,,claude (name+category only; human confirm)
+pharmacy,Walmart Pharmacy,Pharmacy,37.1491146,-121.655225,False,Y,,claude (name+category only; human confirm)
+pharmacy,Walmart Pharmacy,Pharmacy,37.3216605,-121.9732084,False,Y,,claude (name+category only; human confirm)
+pharmacy,Hospital Pharmacy: Mills-Peninsula Medical Center,Pharmacy,37.5925244,-122.382567,False,Y,,claude (name+category only; human confirm)
+pharmacy,Costco Pharmacy,Pharmacy,38.3534419,-122.7172862,False,Y,,claude (name+category only; human confirm)
+pharmacy,Access Pharmacy,Pharmacy,37.7904877,-122.22058,False,Y,,claude (name+category only; human confirm)
+pharmacy,CVS Pharmacy,Pharmacy,37.6888005,-122.1367351,False,Y,,claude (name+category only; human confirm)
+pharmacy,CVS Pharmacy,Pharmacy,37.8518148,-122.0321579,False,Y,,claude (name+category only; human confirm)
+pharmacy,Walgreens Pharmacy,Pharmacy,37.9485552,-122.081938,True,Y,,claude (name+category only; human confirm)
+pharmacy,Walgreens Pharmacy,Pharmacy,37.7923323,-122.4024656,False,Y,,claude (name+category only; human confirm)
+pharmacy,UCSF Mission Bay Pharmacy at Bayfront,Pharmacy,37.7654305,-122.3885479,False,Y,,claude (name+category only; human confirm)
+pharmacy,Costco Pharmacy,Pharmacy,37.6947812,-121.9177244,False,Y,,claude (name+category only; human confirm)
+pharmacy,CVS Pharmacy,Pharmacy,37.6738414,-122.4642387,False,Y,,claude (name+category only; human confirm)
+pharmacy,New Horizons Pharma,Pharmacy,37.7843532,-122.4383215,True,N,"unclear, likely not retail",claude (name+category only; human confirm)
+pharmacy,CVS Pharmacy,Pharmacy,37.2636062,-121.8785859,False,Y,,claude (name+category only; human confirm)
+pharmacy,Creekside Pharmacy,Pharmacy,38.4424206,-122.7043279,False,Y,,claude (name+category only; human confirm)
+pharmacy,Kaiser Mob 2 Phy,Pharmacy,37.8915549,-122.058847,True,Y,,claude (name+category only; human confirm)
+pharmacy,NEMS Pharmacy - 1520 Stockton,Pharmacy,37.7999517,-122.4087542,False,Y,,claude (name+category only; human confirm)
+pharmacy,Walgreens Pharmacy,Pharmacy,37.8047297,-122.4171093,False,Y,,claude (name+category only; human confirm)
