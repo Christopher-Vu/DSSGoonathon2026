@@ -11,6 +11,7 @@ risk / events at res-9 only in hexes with >= MIN_BLDG rent-controlled buildings.
 """
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -70,7 +71,7 @@ def risk():
     c = u.cost.values
     B1 = float(u.cost[u.is_city].sum())
     rng = np.random.default_rng(0)
-    commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
+    commit = os.environ.get("COMMIT") or subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
 
     # --- budget sweep + picks per budget (res-8 counts)
     n8 = u.groupby("hex8").size()
