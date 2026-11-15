@@ -83,7 +83,7 @@ def run_probes(hand: pd.DataFrame, emb: pd.DataFrame, targets: pd.DataFrame, yea
     """Returns (per target x feature-set table, summary dict). Rows are paired: only (cell, year)
     present in hand, emb and targets are used, so every comparison is on identical rows."""
     rng = np.random.default_rng(seed)
-    tg = targets[targets["year"] == year]
+    tg = targets[(targets["year"] == year) & targets["value"].notna()]  # ACS targets are NaN for some cells
     hcols = [c for c in hand.columns if c not in ("cell", "year")]
     ecols = [c for c in emb.columns if c not in ("cell", "year")]
     feat = hand.merge(emb, on=["cell", "year"], how="inner")
